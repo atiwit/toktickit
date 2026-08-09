@@ -1,24 +1,24 @@
-import express from 'express';
-import { PrismaClient } from '@prisma/client';
-import dotenv from 'dotenv';
-
-dotenv.config();
+import express, { Request, Response } from 'express';
+import cors from 'cors';
 
 const app = express();
-const prisma = new PrismaClient();
-
+app.use(cors()); // เปิด CORS ให้ Frontend เรียกใช้งานได้
 app.use(express.json());
 
-app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok' });
+// สร้าง Endpoint สำหรับ Health Check
+app.get('/api/health', (req: Request, res: Response) => {
+  // ส่ง HTTP 200 พร้อม JSON ตาม Acceptance criteria
+  res.status(200).json({ 
+    status: "ok", 
+    service: "Tok TickIT API" 
+  });
 });
 
-const PORT = process.env.PORT || 3001;
-
-if (require.main === module) {
+const PORT = process.env.PORT || 3000;
+if (process.env.NODE_ENV !== 'test') {
   app.listen(PORT, () => {
-    console.log(`Server is running on port ${PORT}`);
+    console.log(`Server running on port ${PORT}`);
   });
 }
 
-export { app, prisma };
+export default app; // export app เพื่อนำไปใช้กับ Supertest
