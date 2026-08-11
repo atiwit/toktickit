@@ -1,66 +1,85 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import 'bootstrap/dist/css/bootstrap.min.css';
 
+// กำหนด Type สำหรับ Category
+interface Category {
+  id: number;
+  name: string;
+}
+
 function App() {
-  // สร้าง State สำหรับเก็บสถานะต่างๆ
-  const [status, setStatus] = useState<string | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
+  const [status, setStatus] = useState<string | null>(null);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [error, setError] = useState<string | null>(null);
 
   const handleCheckSystem = async () => {
     setLoading(true);
-    setError(null); // เคลียร์ error เก่าก่อนเริ่มเรียก API
+    setError(null);
     setStatus(null);
+    setCategories([]);
 
     try {
-      // เรียก API ไปที่ Backend (ปรับ URL ให้ตรงกับพอร์ตที่คุณรัน)
-      const response = await fetch('http://localhost:3000/api/health');
-      
-      if (!response.ok) {
-        throw new Error('Network response was not ok');
+      // เรียก API 2 ตัวพร้อมกัน: Health (Issue 2) และ Categories (Issue 4)
+      const [healthRes, categoriesRes] = await Promise.all([
+        fetch('http://localhost:3000/api/health'), // ปรับพอร์ตให้ตรงกับ Backend ของคุณ
+        fetch('http://localhost:3000/api/categories')
+      ]);
+
+      if (!healthRes.ok || !categoriesRes.ok) {
+        throw new Error('API is unavailable');
       }
 
-      const data = await response.json();
-      
-      // ถ้าสำเร็จ ให้เซ็ตสถานะเป็น Online
-      if (data.status === 'ok') {
-        setStatus('Online');
-      }
+      const healthData = await healthRes.json();
+      const categoriesData = await categoriesRes.json();
+
+      setStatus(healthData.status === 'ok' ? 'Online' : 'Offline');
+      setCategories(categoriesData);
     } catch (err) {
-      // ถ้า Backend ปิดอยู่ หรือมี Error ให้แสดงข้อความที่มีประโยชน์
       setStatus('Offline');
       setError('Unable to connect to Tok TickIT API');
     } finally {
-      setLoading(false); // ปิดสถานะ Loading
+      setLoading(false);
     }
   };
 
   return (
     <div className="container mt-5">
-      <h2>Tok TickIT IT Service Desk</h2>
+      <h1>TokTickIT IT Service Desk</h1>
       
       <button 
-        className="btn btn-primary my-3" 
+        className="btn btn-primary mb-4" 
         onClick={handleCheckSystem}
         disabled={loading}
       >
-        {loading ? 'Checking...' : 'Check System'}
+        [ Check System ]
       </button>
 
-      {/* แสดงสถานะระบบ */}
-      {status && (
-        <div className="mb-2">
-          <strong>System Status: </strong> 
-          <span className={status === 'Online' ? 'text-success' : 'text-danger'}>
-            {status}
-          </span>
+      {/* Loading State */}
+      {loading && (
+        <div className="alert alert-info">
+          ⏳ loading...
         </div>
       )}
 
-      {/* แสดง Error Message ถ้าเชื่อมต่อไม่ได้ */}
-      {error && (
-        <div className="alert alert-danger" role="alert">
-          {error}
+      {/* Error State */}
+      {error && !loading && (
+        <div>
+          <p>System Status: <strong>{status}</strong></p>
+          <div className="alert alert-danger">{error}</div>
+        </div>
+      )}
+
+      {/* Success State */}
+      {!loading && !error && status === 'Online' && (
+        <div>
+          <p>System Status: <strong className="text-success">{status}</strong></p>
+          <h5>Supported Request Categories:</h5>
+          <ul>
+            {categories.map((cat) => (
+              <li key={cat.id}>{cat.name}</li>
+            ))}
+          </ul>
         </div>
       )}
     </div>
