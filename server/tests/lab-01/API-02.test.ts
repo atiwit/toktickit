@@ -1,10 +1,10 @@
 import request from 'supertest';
 import { describe, it, expect } from 'vitest';
-import app from '../../server/src/index';
+import app from '../../src/index';
 
 // Mock PrismaClient to avoid requiring a running database during tests
 import { vi } from 'vitest';
-vi.mock('../../server/src/generated/prisma/client', () => {
+vi.mock('../../src/generated/prisma/client', () => {
   return {
     PrismaClient: vi.fn().mockImplementation(() => {
       return {
