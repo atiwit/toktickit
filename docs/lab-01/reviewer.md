@@ -1,12 +1,32 @@
 # PR Review Evidence — Lab 01
 
-## Reviewer Information
+## My Information
 
 | Field | Details |
 | :--- | :--- |
 | **Name** | Atiwit Thongngoen |
 | **Student ID** | 67070501048 |
 | **GitHub Username** | [@atiwit](https://github.com/atiwit) |
+
+---
+
+## First Reviewer Information
+
+| Field | Details |
+| :--- | :--- |
+| **Name** | Alongkorn Kaewprom | 
+| **Student ID** | 67070501050 | 
+| **GitHub Username** | [@Alongkron1234](https://github.com/Alongkron1234) |
+
+---
+
+## Second Reviewer Information
+
+| Field | Details |
+| :--- | :--- |
+| **Name** | NANTAKORN PINSUPAPORN |
+| **Student ID** | 67070501028 |
+| **GitHub Username** | [@copter549365](https://github.com/copter549365) |
 
 ---
 
