@@ -69,10 +69,10 @@ const SAMPLE_TICKETS = (
 // Main
 // ---------------------------------------------------------------------------
 async function main() {
-  console.log('🌱 Start seeding...\n');
+  console.log('Start seeding...\n');
 
   // --- Categories ---
-  console.log('📂 Seeding categories...');
+  console.log('Seeding categories...');
   for (const name of CATEGORIES) {
     const cat = await prisma.category.upsert({
       where: { name },
@@ -83,7 +83,7 @@ async function main() {
   }
 
   // --- Related Systems ---
-  console.log('\n🖥️  Seeding related systems...');
+  console.log('\n Seeding related systems...');
   for (const name of RELATED_SYSTEMS) {
     const sys = await prisma.relatedSystem.upsert({
       where: { name },
@@ -108,7 +108,7 @@ async function main() {
   }
 
   // --- Sample Tickets (active requesters only) ---
-  console.log('\n🎫 Seeding sample tickets...');
+  console.log('\n Seeding sample tickets...');
   const activeRequesters = upsertedRequesters.filter(r => r.isActive);
 
   // Fetch IDs for category and system to use in tickets
@@ -131,12 +131,12 @@ async function main() {
     }
   }
 
-  console.log('\n✅ Seeding complete!');
+  console.log('\n Seeding complete!');
 }
 
 main()
   .catch((e) => {
-    console.error('❌ Seed failed:', e);
+    console.error('Seed failed:', e);
     process.exit(1);
   })
   .finally(async () => {
