@@ -23,7 +23,11 @@ enum Priority {
 }
 
 enum TicketStatus {
-  NEW
+  NEW          // ticket ถูกสร้างใหม่ (default)
+  OPEN         // ticket ถูกเปิดและรอดำเนินการ
+  IN_PROGRESS  // ticket อยู่ระหว่างดำเนินการ
+  RESOLVED     // ticket ได้รับการแก้ไขแล้ว
+  CLOSED       // ticket ถูกปิด
 }
 
 // ---------------------------------------------------------------------------
