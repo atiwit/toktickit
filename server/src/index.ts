@@ -34,6 +34,21 @@ app.get('/api/categories', async (req: Request, res: Response) => {
   }
 });
 
+// Issue3 Requesters API
+app.get('/api/requesters', async (req: Request, res: Response) => {
+  try {
+    const requesters = await prisma.requesterUser.findMany({
+      where: { isActive: true },
+      orderBy: { id: 'asc' },
+      select: { id: true, name: true, email: true }
+    });
+    res.status(200).json(requesters);
+  } catch (error) {
+    console.error("Database error:", error);
+    res.status(500).json({ error: "Unable to fetch requesters" });
+  }
+});
+
 const PORT = process.env.PORT || 3000;
 if (process.env.NODE_ENV !== 'test') {
   app.listen(PORT, () => {
