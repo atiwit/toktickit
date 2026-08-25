@@ -11,7 +11,7 @@ interface RequesterContextType {
   changeRequester: (requester: Requester | null) => void;
 }
 
-const RequesterContext = createContext<RequesterContextType | undefined>(undefined);
+export const RequesterContext = createContext<RequesterContextType | undefined>(undefined);
 
 export const RequesterProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [selectedRequester, setSelectedRequester] = useState<Requester | null>(() => {

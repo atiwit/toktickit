@@ -9,11 +9,7 @@ import {
   Card,
   Badge,
 } from 'react-bootstrap';
-import { useRequester } from '../context/RequesterContext';
-
-// ───────────────────────────────────────────────
-// Types
-// ───────────────────────────────────────────────
+import { useRequester } from '../context/RequesterContext'; 
 
 interface Category {
   id: number;
@@ -64,10 +60,6 @@ const PRIORITY_BADGE_VARIANT: Record<string, string> = {
   CRITICAL: 'dark',
 };
 
-// ───────────────────────────────────────────────
-// Component
-// ───────────────────────────────────────────────
-
 const CreateTicket: React.FC = () => {
   const { selectedRequester } = useRequester();
 
@@ -95,7 +87,6 @@ const CreateTicket: React.FC = () => {
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // ─── Load reference data ───────────────────────
   useEffect(() => {
     const load = async () => {
       setRefLoading(true);
@@ -145,12 +136,10 @@ const CreateTicket: React.FC = () => {
     return Object.keys(errors).length === 0;
   };
 
-  // ─── Handle file change ────────────────────────
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0] ?? null;
     setAttachmentFile(file);
 
-    // Immediate attachment validation feedback
     if (file) {
       if (!ALLOWED_MIME_TYPES.includes(file.type)) {
         setFieldErrors((prev) => ({
@@ -170,7 +159,6 @@ const CreateTicket: React.FC = () => {
     }
   };
 
-  // ─── Form submission ───────────────────────────
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validate()) return;
@@ -212,14 +200,12 @@ const CreateTicket: React.FC = () => {
 
       setCreatedTicket(data);
     } catch {
-      // Network / server down — preserve form values (do NOT reset)
       setApiError('Unable to reach the server. Your form data has been preserved — please try again when the connection is restored.');
     } finally {
       setSubmitting(false);
     }
   };
 
-  // ─── Reset form for another ticket ────────────
   const handleCreateAnother = () => {
     setCategoryId('');
     setRelatedSystemId('');
@@ -233,7 +219,6 @@ const CreateTicket: React.FC = () => {
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
-  // ─── Loading reference data ────────────────────
   if (refLoading) {
     return (
       <div className="create-ticket-loading" id="create-ticket-loading">
@@ -259,7 +244,6 @@ const CreateTicket: React.FC = () => {
     );
   }
 
-  // ─── Success state ─────────────────────────────
   if (createdTicket) {
     return (
       <div id="create-ticket-success">
@@ -332,7 +316,6 @@ const CreateTicket: React.FC = () => {
     );
   }
 
-  // ─── Main form ─────────────────────────────────
   return (
     <div id="create-ticket-page">
       <div className="create-ticket-header mb-4">
