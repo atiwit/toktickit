@@ -15,7 +15,7 @@ const RequesterSelector: React.FC = () => {
   useEffect(() => {
     const fetchRequesters = async () => {
       try {
-        const response = await fetch('http://localhost:3000/api/requesters');
+        const response = await fetch('/api/requesters');
         if (!response.ok) {
           throw new Error('Failed to fetch requesters');
         }
