@@ -167,6 +167,82 @@ app.post('/api/tickets', async (req: Request, res: Response) => {
   }
 });
 
+// Issue6 My Tickets API — GET /api/tickets
+app.get('/api/tickets', async (req: Request, res: Response) => {
+  try {
+    const requesterIdHeader = getRequesterId(req);
+    if (!requesterIdHeader) {
+      res.status(401).json({ error: 'Missing requester context' });
+      return;
+    }
+
+    const { requesterId, search, status, category, sort, page, limit } = req.query;
+
+    if (requesterId && parseInt(String(requesterId), 10) !== requesterIdHeader) {
+      res.status(403).json({ error: 'Cross-requester access forbidden' });
+      return;
+    }
+
+    const targetRequesterId = requesterId ? parseInt(String(requesterId), 10) : requesterIdHeader;
+
+    const pageNum = parseInt(String(page)) || 1;
+    const limitNum = parseInt(String(limit)) || 10;
+    const skip = (pageNum - 1) * limitNum;
+
+    // Build filters
+    const where: any = { requesterId: targetRequesterId };
+
+    if (status && status !== 'All Statuses' && status !== '') {
+      where.status = String(status);
+    }
+
+    if (category && category !== 'All Categories' && category !== '') {
+      // It might be a string ID or name depending on frontend implementation, assuming ID here
+      const catId = parseInt(String(category), 10);
+      if (!isNaN(catId)) where.categoryId = catId;
+    }
+
+    if (search && String(search).trim() !== '') {
+      where.OR = [
+        { ticketNumber: { contains: String(search), mode: 'insensitive' } },
+        { summary: { contains: String(search), mode: 'insensitive' } }
+      ];
+    }
+
+    // Default sort is descending by createdAt unless specified
+    const orderBy: any = {};
+    if (sort === 'date_asc') orderBy.createdAt = 'asc';
+    else orderBy.createdAt = 'desc';
+
+    const [totalCount, tickets] = await Promise.all([
+      prisma.ticket.count({ where }),
+      prisma.ticket.findMany({
+        where,
+        orderBy,
+        skip,
+        take: limitNum,
+        include: {
+          category: { select: { id: true, name: true } },
+          relatedSystem: { select: { id: true, name: true } },
+          requester: { select: { id: true, name: true } }
+        }
+      })
+    ]);
+
+    res.status(200).json({
+      data: tickets,
+      meta: {
+        totalCount,
+        totalPages: Math.ceil(totalCount / limitNum),
+        currentPage: pageNum
+      }
+    });
+  } catch (error) {
+    console.error("Database error:", error);
+    res.status(500).json({ error: "Unable to fetch tickets" });
+  }
+});
+
 // ---------------------------------------------------------------------------
 // Issue #5 — Attachment endpoints
 // ---------------------------------------------------------------------------

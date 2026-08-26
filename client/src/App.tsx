@@ -7,13 +7,7 @@ import ProtectedRoute from './components/ProtectedRoute';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import './index.css';
 
-// Placeholder for future issues
-const MyTickets = () => (
-  <div>
-    <h2>My Tickets</h2>
-    <p>This screen will be implemented in Issue 6.</p>
-  </div>
-);
+import MyTickets from './pages/MyTickets';
 
 function App() {
   return (
