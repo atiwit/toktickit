@@ -201,6 +201,20 @@ const upload = multer({
   },
 });
 
+const getRequesterId = (req: Request): number | null => {
+  const header = req.headers['x-requester-id'];
+  if (header) {
+    const id = parseInt(String(header), 10);
+    if (!isNaN(id)) return id;
+  }
+  const query = req.query.requesterId;
+  if (query) {
+    const id = parseInt(String(query), 10);
+    if (!isNaN(id)) return id;
+  }
+  return null;
+};
+
 // POST /api/tickets/:id/attachments — upload a file
 app.post('/api/tickets/:id/attachments', (req: Request, res: Response) => {
   const ticketId = parseInt(String(req.params.id), 10);
@@ -230,12 +244,25 @@ app.post('/api/tickets/:id/attachments', (req: Request, res: Response) => {
     }
 
     try {
+      const requesterId = getRequesterId(req);
+      if (!requesterId) {
+        try { fs.unlinkSync(req.file.path); } catch { /* ignore */ }
+        res.status(401).json({ error: 'Missing requester context' });
+        return;
+      }
+
       // Verify ticket exists
       const ticket = await prisma.ticket.findUnique({ where: { id: ticketId } });
       if (!ticket) {
         // Best-effort cleanup — ignore if file already gone
         try { fs.unlinkSync(req.file.path); } catch { /* ignore */ }
         res.status(404).json({ error: 'Ticket not found' });
+        return;
+      }
+
+      if (ticket.requesterId !== requesterId) {
+        try { fs.unlinkSync(req.file.path); } catch { /* ignore */ }
+        res.status(403).json({ error: 'You do not have permission to upload to this ticket' });
         return;
       }
 
@@ -274,10 +301,19 @@ app.get('/api/tickets/:id/attachments', async (req: Request, res: Response) => {
     res.status(400).json({ error: 'Invalid ticket id' });
     return;
   }
+  const requesterId = getRequesterId(req);
+  if (!requesterId) {
+    res.status(401).json({ error: 'Missing requester context' });
+    return;
+  }
   try {
     const ticket = await prisma.ticket.findUnique({ where: { id: ticketId } });
     if (!ticket) {
       res.status(404).json({ error: 'Ticket not found' });
+      return;
+    }
+    if (ticket.requesterId !== requesterId) {
+      res.status(403).json({ error: 'You do not have permission to view these attachments' });
       return;
     }
     const attachments = await prisma.attachment.findMany({
@@ -309,10 +345,22 @@ app.get('/api/attachments/:id/download', async (req: Request, res: Response) => 
     res.status(400).json({ error: 'Invalid attachment id' });
     return;
   }
+  const requesterId = getRequesterId(req);
+  if (!requesterId) {
+    res.status(401).json({ error: 'Missing requester context' });
+    return;
+  }
   try {
-    const attachment = await prisma.attachment.findUnique({ where: { id } });
+    const attachment = await prisma.attachment.findUnique({ 
+      where: { id },
+      include: { ticket: true }
+    });
     if (!attachment) {
       res.status(404).json({ error: 'Attachment not found' });
+      return;
+    }
+    if (attachment.ticket.requesterId !== requesterId) {
+      res.status(403).json({ error: 'You do not have permission to download this attachment' });
       return;
     }
     if (attachment.isRemoved) {
@@ -351,10 +399,23 @@ app.delete('/api/attachments/:id', async (req: Request, res: Response) => {
     return;
   }
 
+  const requesterId = getRequesterId(req);
+  if (!requesterId) {
+    res.status(401).json({ error: 'Missing requester context' });
+    return;
+  }
+
   try {
-    const attachment = await prisma.attachment.findUnique({ where: { id } });
+    const attachment = await prisma.attachment.findUnique({ 
+      where: { id },
+      include: { ticket: true }
+    });
     if (!attachment) {
       res.status(404).json({ error: 'Attachment not found' });
+      return;
+    }
+    if (attachment.ticket.requesterId !== requesterId) {
+      res.status(403).json({ error: 'You do not have permission to remove this attachment' });
       return;
     }
     if (attachment.isRemoved) {

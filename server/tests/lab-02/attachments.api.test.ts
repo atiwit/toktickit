@@ -8,7 +8,7 @@ const {
   mockAttachmentRemoved,
   multerBehavior,
 } = vi.hoisted(() => {
-  const mockTicket = { id: 1, ticketNumber: 'TKT-20260825-0001' };
+  const mockTicket = { id: 1, ticketNumber: 'TKT-20260825-0001', requesterId: 1 };
 
   const mockAttachmentActive = {
     id: 1,
@@ -21,6 +21,7 @@ const {
     removedReason: null,
     removedAt: null,
     uploadedAt: new Date('2026-08-25T07:00:00.000Z'),
+    ticket: { id: 1, ticketNumber: 'TKT-20260825-0001', requesterId: 1 },
   };
 
   const mockAttachmentRemoved = {
@@ -34,6 +35,7 @@ const {
     removedReason: 'Wrong file attached',
     removedAt: new Date('2026-08-25T08:00:00.000Z'),
     uploadedAt: new Date('2026-08-25T07:30:00.000Z'),
+    ticket: { id: 1, ticketNumber: 'TKT-20260825-0001', requesterId: 1 },
   };
 
   const mockPrisma = {
@@ -139,6 +141,7 @@ describe('POST /api/tickets/:id/attachments — valid upload', () => {
   it('returns HTTP 201 on valid upload', async () => {
     const res = await request(app)
       .post('/api/tickets/1/attachments')
+      .set('X-Requester-Id', '1')
       .attach('file', Buffer.from('fake png'), { filename: 'screenshot.png', contentType: 'image/png' });
     expect(res.status).toBe(201);
   });
@@ -146,6 +149,7 @@ describe('POST /api/tickets/:id/attachments — valid upload', () => {
   it('returns attachment object with id, originalFilename, mimeType, size', async () => {
     const res = await request(app)
       .post('/api/tickets/1/attachments')
+      .set('X-Requester-Id', '1')
       .attach('file', Buffer.from('fake png'), { filename: 'screenshot.png', contentType: 'image/png' });
     expect(res.body).toHaveProperty('id');
     expect(res.body).toHaveProperty('originalFilename', 'screenshot.png');
@@ -158,6 +162,7 @@ describe('POST /api/tickets/:id/attachments — valid upload', () => {
     mockPrisma.ticket.findUnique.mockResolvedValueOnce(null);
     const res = await request(app)
       .post('/api/tickets/999/attachments')
+      .set('X-Requester-Id', '1')
       .attach('file', Buffer.from('fake png'), { filename: 'screenshot.png', contentType: 'image/png' });
     expect(res.status).toBe(404);
   });
@@ -168,6 +173,7 @@ describe('POST /api/tickets/:id/attachments — wrong MIME type', () => {
     multerBehavior.mode = 'mime_rejected';
     const res = await request(app)
       .post('/api/tickets/1/attachments')
+      .set('X-Requester-Id', '1')
       .attach('file', Buffer.from('hello'), { filename: 'doc.txt', contentType: 'text/plain' });
     expect(res.status).toBe(400);
     expect(res.body.error).toMatch(/type not allowed/i);
@@ -179,6 +185,7 @@ describe('POST /api/tickets/:id/attachments — file over 5 MB', () => {
     multerBehavior.mode = 'size_exceeded';
     const res = await request(app)
       .post('/api/tickets/1/attachments')
+      .set('X-Requester-Id', '1')
       .attach('file', Buffer.from('fake'), { filename: 'large.png', contentType: 'image/png' });
     expect(res.status).toBe(400);
     expect(res.body.error).toMatch(/5 MB/i);
@@ -190,6 +197,7 @@ describe('POST /api/tickets/:id/attachments — exceeds active limit', () => {
     mockPrisma.attachment.count.mockResolvedValueOnce(5);
     const res = await request(app)
       .post('/api/tickets/1/attachments')
+      .set('X-Requester-Id', '1')
       .attach('file', Buffer.from('fake png'), { filename: 'screenshot.png', contentType: 'image/png' });
     expect(res.status).toBe(400);
     expect(res.body.error).toMatch(/5 active/i);
@@ -198,13 +206,13 @@ describe('POST /api/tickets/:id/attachments — exceeds active limit', () => {
 
 describe('GET /api/tickets/:id/attachments', () => {
   it('returns 200 with an array of attachments', async () => {
-    const res = await request(app).get('/api/tickets/1/attachments');
+    const res = await request(app).get('/api/tickets/1/attachments').set('X-Requester-Id', '1');
     expect(res.status).toBe(200);
     expect(Array.isArray(res.body)).toBe(true);
   });
 
   it('returns both active and removed attachments', async () => {
-    const res = await request(app).get('/api/tickets/1/attachments');
+    const res = await request(app).get('/api/tickets/1/attachments').set('X-Requester-Id', '1');
     const active = res.body.filter((a: any) => !a.isRemoved);
     const removed = res.body.filter((a: any) => a.isRemoved);
     expect(active.length).toBeGreaterThan(0);
@@ -212,7 +220,7 @@ describe('GET /api/tickets/:id/attachments', () => {
   });
 
   it('removed attachment has removedReason and removedAt', async () => {
-    const res = await request(app).get('/api/tickets/1/attachments');
+    const res = await request(app).get('/api/tickets/1/attachments').set('X-Requester-Id', '1');
     const removed = res.body.find((a: any) => a.isRemoved);
     expect(removed).toBeDefined();
     expect(removed.removedReason).toBeTruthy();
@@ -221,7 +229,7 @@ describe('GET /api/tickets/:id/attachments', () => {
 
   it('returns 404 when ticket does not exist', async () => {
     mockPrisma.ticket.findUnique.mockResolvedValueOnce(null);
-    const res = await request(app).get('/api/tickets/999/attachments');
+    const res = await request(app).get('/api/tickets/999/attachments').set('X-Requester-Id', '1');
     expect(res.status).toBe(404);
   });
 });
@@ -230,7 +238,7 @@ describe('GET /api/attachments/:id/download — active file', () => {
   it('does NOT return 403 for an active attachment (business logic OK)', async () => {
     // The file path is fake, so sendFile may 404 — but our business logic
     // only blocks with 403. Accepting 200 or 404 (file not on disk) is correct.
-    const res = await request(app).get('/api/attachments/1/download');
+    const res = await request(app).get('/api/attachments/1/download').set('X-Requester-Id', '1');
     expect(res.status).not.toBe(403);
   });
 });
@@ -238,7 +246,7 @@ describe('GET /api/attachments/:id/download — active file', () => {
 describe('GET /api/attachments/:id/download — removed attachment', () => {
   it('returns 403 for a removed attachment', async () => {
     mockPrisma.attachment.findUnique.mockResolvedValueOnce(mockAttachmentRemoved);
-    const res = await request(app).get('/api/attachments/2/download');
+    const res = await request(app).get('/api/attachments/2/download').set('X-Requester-Id', '1');
     expect(res.status).toBe(403);
     expect(res.body.error).toMatch(/removed/i);
   });
@@ -247,7 +255,7 @@ describe('GET /api/attachments/:id/download — removed attachment', () => {
 describe('GET /api/attachments/:id/download — not found', () => {
   it('returns 404 when attachment id does not exist', async () => {
     mockPrisma.attachment.findUnique.mockResolvedValueOnce(null);
-    const res = await request(app).get('/api/attachments/999/download');
+    const res = await request(app).get('/api/attachments/999/download').set('X-Requester-Id', '1');
     expect(res.status).toBe(404);
   });
 });
@@ -255,21 +263,21 @@ describe('GET /api/attachments/:id/download — not found', () => {
 describe('DELETE /api/attachments/:id — soft-remove with reason', () => {
   it('returns 200 after soft-removing with a valid reason', async () => {
     const res = await request(app)
-      .delete('/api/attachments/1')
+      .delete('/api/attachments/1').set('X-Requester-Id', '1')
       .send({ reason: 'Wrong file attached' });
     expect(res.status).toBe(200);
   });
 
   it('response has isRemoved = true', async () => {
     const res = await request(app)
-      .delete('/api/attachments/1')
+      .delete('/api/attachments/1').set('X-Requester-Id', '1')
       .send({ reason: 'Wrong file attached' });
     expect(res.body.isRemoved).toBe(true);
   });
 
   it('response includes removedReason', async () => {
     const res = await request(app)
-      .delete('/api/attachments/1')
+      .delete('/api/attachments/1').set('X-Requester-Id', '1')
       .send({ reason: 'Wrong file attached' });
     expect(res.body.removedReason).toBeTruthy();
   });
@@ -277,13 +285,13 @@ describe('DELETE /api/attachments/:id — soft-remove with reason', () => {
 
 describe('DELETE /api/attachments/:id — missing reason', () => {
   it('returns 400 when reason is missing', async () => {
-    const res = await request(app).delete('/api/attachments/1').send({});
+    const res = await request(app).delete('/api/attachments/1').set('X-Requester-Id', '1').send({});
     expect(res.status).toBe(400);
     expect(res.body.error).toMatch(/reason/i);
   });
 
   it('returns 400 when reason is blank/whitespace', async () => {
-    const res = await request(app).delete('/api/attachments/1').send({ reason: '   ' });
+    const res = await request(app).delete('/api/attachments/1').set('X-Requester-Id', '1').send({ reason: '   ' });
     expect(res.status).toBe(400);
   });
 });
@@ -292,7 +300,7 @@ describe('DELETE /api/attachments/:id — not found / already removed', () => {
   it('returns 404 when attachment does not exist', async () => {
     mockPrisma.attachment.findUnique.mockResolvedValueOnce(null);
     const res = await request(app)
-      .delete('/api/attachments/999')
+      .delete('/api/attachments/999').set('X-Requester-Id', '1')
       .send({ reason: 'Cleanup' });
     expect(res.status).toBe(404);
   });
@@ -300,7 +308,7 @@ describe('DELETE /api/attachments/:id — not found / already removed', () => {
   it('returns 400 when attachment is already removed', async () => {
     mockPrisma.attachment.findUnique.mockResolvedValueOnce(mockAttachmentRemoved);
     const res = await request(app)
-      .delete('/api/attachments/2')
+      .delete('/api/attachments/2').set('X-Requester-Id', '1')
       .send({ reason: 'Cleanup again' });
     expect(res.status).toBe(400);
     expect(res.body.error).toMatch(/already removed/i);
