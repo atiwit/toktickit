@@ -8,6 +8,7 @@ import 'bootstrap/dist/css/bootstrap.min.css';
 import './index.css';
 
 import MyTickets from './pages/MyTickets';
+import TicketDetailPage from './pages/TicketDetail';
 
 function App() {
   return (
@@ -19,6 +20,7 @@ function App() {
           <Route element={<ProtectedRoute />}>
             <Route path="/" element={<MyTickets />} />
             <Route path="/create-ticket" element={<CreateTicket />} />
+            <Route path="/tickets/:id" element={<TicketDetailPage />} />
           </Route>
 
           <Route path="*" element={<Navigate to="/" replace />} />
