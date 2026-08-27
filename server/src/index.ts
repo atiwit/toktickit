@@ -176,7 +176,7 @@ app.get('/api/tickets', async (req: Request, res: Response) => {
       return;
     }
 
-    const { requesterId, search, status, category, sort, page, limit } = req.query;
+    const { requesterId, search, status, category, requestedPriority, sort, page, limit } = req.query;
 
     if (requesterId && parseInt(String(requesterId), 10) !== requesterIdHeader) {
       res.status(403).json({ error: 'Cross-requester access forbidden' });
@@ -200,6 +200,10 @@ app.get('/api/tickets', async (req: Request, res: Response) => {
       // It might be a string ID or name depending on frontend implementation, assuming ID here
       const catId = parseInt(String(category), 10);
       if (!isNaN(catId)) where.categoryId = catId;
+    }
+
+    if (requestedPriority && requestedPriority !== '') {
+      where.requestedPriority = String(requestedPriority);
     }
 
     if (search && String(search).trim() !== '') {

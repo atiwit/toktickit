@@ -93,6 +93,7 @@ const MyTickets: React.FC = () => {
   const [category, setCategory] = useState('');
   const [reqPriority, setReqPriority] = useState('');
   const [curStatus, setCurStatus] = useState('');
+  const [sort, setSort] = useState<'date_desc' | 'date_asc'>('date_desc');
   const [page, setPage] = useState(1);
   const LIMIT = 8;
 
@@ -115,6 +116,7 @@ const MyTickets: React.FC = () => {
       if (category)    q.set('category', category);
       if (reqPriority) q.set('requestedPriority', reqPriority);
       if (curStatus)   q.set('status', curStatus);
+      q.set('sort', sort);
 
       const res = await fetch(`/api/tickets?${q}`, {
         headers: { 'X-Requester-Id': String(selectedRequester.id) },
@@ -130,7 +132,7 @@ const MyTickets: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [selectedRequester, search, category, reqPriority, curStatus, page]);
+  }, [selectedRequester, search, category, reqPriority, curStatus, sort, page]);
 
   useEffect(() => { setPage(1); }, [selectedRequester]);
   useEffect(() => { fetchTickets(); }, [fetchTickets]);
@@ -140,6 +142,12 @@ const MyTickets: React.FC = () => {
     setCategory('');
     setReqPriority('');
     setCurStatus('');
+    setSort('date_desc');
+    setPage(1);
+  };
+
+  const toggleSort = () => {
+    setSort(s => s === 'date_desc' ? 'date_asc' : 'date_desc');
     setPage(1);
   };
 
@@ -268,13 +276,15 @@ const MyTickets: React.FC = () => {
           </select>
         </div>
 
-        {/* IT Priority */}
+        {/* IT Priority — field not yet in schema, shown as disabled */}
         <div style={{ flex: '1', minWidth: '140px' }}>
-          <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#374151', display: 'block', marginBottom: '3px' }}>IT Priority</label>
+          <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#9CA3AF', display: 'block', marginBottom: '3px' }}>IT Priority</label>
           <select
             id="it-priority-filter"
-            style={{ width: '100%', padding: '8px 10px', borderRadius: '8px', border: '1px solid #E5E7EB', fontSize: '0.85rem', background: '#fff', color: '#374151' }}>
-            <option value="">All Priorities</option>
+            disabled
+            title="IT Priority is not yet available"
+            style={{ width: '100%', padding: '8px 10px', borderRadius: '8px', border: '1px solid #E5E7EB', fontSize: '0.85rem', background: '#F3F4F6', color: '#9CA3AF', cursor: 'not-allowed' }}>
+            <option value="">Not available yet</option>
           </select>
         </div>
 
@@ -330,15 +340,27 @@ const MyTickets: React.FC = () => {
             <table style={{ width: '100%', borderCollapse: 'collapse', background: '#fff', borderRadius: '10px', overflow: 'hidden' }}>
               <thead style={{ background: '#EAF6EF' }}>
                 <tr>
-                  <th style={theadTh}>Ticket No. ↕</th>
-                  <th style={theadTh}>Created Date ↕</th>
+                  <th style={theadTh}>Ticket No.</th>
+                  <th
+                    style={{ ...theadTh, cursor: 'pointer', userSelect: 'none' }}
+                    onClick={toggleSort}
+                    title={sort === 'date_desc' ? 'Sorted: Newest first — click to sort Oldest first' : 'Sorted: Oldest first — click to sort Newest first'}
+                  >
+                    Created Date {sort === 'date_desc' ? '↓' : '↑'}
+                  </th>
                   <th style={theadTh}>Summary</th>
                   <th style={theadTh}>Category</th>
                   <th style={{ ...theadTh, textAlign: 'center' }}>Requested Priority</th>
                   <th style={{ ...theadTh, textAlign: 'center' }}>IT Priority</th>
                   <th style={{ ...theadTh, textAlign: 'center' }}>Current Status</th>
                   <th style={theadTh}>Ticket Owner</th>
-                  <th style={theadTh}>Last Updated ↕</th>
+                  <th
+                    style={{ ...theadTh, cursor: 'pointer', userSelect: 'none' }}
+                    onClick={toggleSort}
+                    title={sort === 'date_desc' ? 'Sorted: Newest first — click to sort Oldest first' : 'Sorted: Oldest first — click to sort Newest first'}
+                  >
+                    Last Updated {sort === 'date_desc' ? '↓' : '↑'}
+                  </th>
                 </tr>
               </thead>
               <tbody>
