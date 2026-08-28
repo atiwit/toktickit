@@ -9,6 +9,23 @@ const SYSTEM        = 'Corporate Laptop';
 
 test.describe('E2E-01: Requester Ticket Flow', () => {
   test('Select requester → Create ticket → Find in My Tickets → Open detail → See attachments section', async ({ page }) => {
+    const screenshotDir = 'artifacts/lab-02/screenshots';
+    const captureScreenshots = async (pageName: string) => {
+      await page.setViewportSize({ width: 1280, height: 800 });
+      await page.waitForTimeout(500);
+      await page.screenshot({ path: `${screenshotDir}/${pageName}/desktop.png`, fullPage: true });
+
+      await page.setViewportSize({ width: 768, height: 1024 });
+      await page.waitForTimeout(500);
+      await page.screenshot({ path: `${screenshotDir}/${pageName}/tablet.png`, fullPage: true });
+
+      await page.setViewportSize({ width: 375, height: 812 });
+      await page.waitForTimeout(500);
+      await page.screenshot({ path: `${screenshotDir}/${pageName}/mobile.png`, fullPage: true });
+
+      await page.setViewportSize({ width: 1280, height: 800 });
+      await page.waitForTimeout(500);
+    };
 
     await page.goto(`${BASE}/login`);
     await page.waitForSelector('select', { timeout: 10_000 });
@@ -19,9 +36,11 @@ test.describe('E2E-01: Requester Ticket Flow', () => {
 
     await expect(page).toHaveURL(`${BASE}/`);
     await page.waitForSelector('#my-tickets-page', { timeout: 10_000 });
+    await captureScreenshots('my-tickets');
 
     await page.click('#btn-create-ticket');
     await expect(page).toHaveURL(`${BASE}/create-ticket`);
+    await captureScreenshots('create-ticket');
 
     const uniqueSummary = `E2E Test Ticket ${Date.now()}`;
 
@@ -61,19 +80,7 @@ test.describe('E2E-01: Requester Ticket Flow', () => {
     // Upload input is present
     await expect(page.locator('#attachment-upload-input')).toBeAttached();
 
-    const screenshotDir = 'artifacts/lab-02/screenshots';
-
-    // 1280px — Desktop
-    await page.setViewportSize({ width: 1280, height: 800 });
-    await page.screenshot({ path: `${screenshotDir}/ticket-detail-1280.png`, fullPage: true });
-
-    // 768px — Tablet
-    await page.setViewportSize({ width: 768, height: 1024 });
-    await page.screenshot({ path: `${screenshotDir}/ticket-detail-768.png`, fullPage: true });
-
-    // 375px — Mobile
-    await page.setViewportSize({ width: 375, height: 812 });
-    await page.screenshot({ path: `${screenshotDir}/ticket-detail-375.png`, fullPage: true });
+    await captureScreenshots('ticket-detail');
   });
 
   test('AC-03: Requester B cannot view Requester A\'s ticket detail', async ({ page, context }) => {
