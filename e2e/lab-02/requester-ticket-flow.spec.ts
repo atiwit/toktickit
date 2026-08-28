@@ -5,7 +5,7 @@ const BASE = 'http://localhost:5173';
 // Seed-dependent values — adjust if seed data differs
 const REQUESTER_NAME = 'Alice Johnson';
 const CATEGORY      = 'Hardware';
-const SYSTEM        = 'ERP System';
+const SYSTEM        = 'Corporate Laptop';
 
 test.describe('E2E-01: Requester Ticket Flow', () => {
   test('Select requester → Create ticket → Find in My Tickets → Open detail → See attachments section', async ({ page }) => {
@@ -14,7 +14,7 @@ test.describe('E2E-01: Requester Ticket Flow', () => {
     await page.waitForSelector('select', { timeout: 10_000 });
 
     const select = page.locator('select').first();
-    await select.selectOption({ label: REQUESTER_NAME });
+    await select.selectOption({ label: 'Alice Johnson (alice.johnson@example.com)' });
     await page.click('button:has-text("Continue")');
 
     await expect(page).toHaveURL(`${BASE}/`);
@@ -25,16 +25,16 @@ test.describe('E2E-01: Requester Ticket Flow', () => {
 
     const uniqueSummary = `E2E Test Ticket ${Date.now()}`;
 
-    await page.selectOption('#category-select', { label: CATEGORY });
-    await page.selectOption('#related-system-select', { label: SYSTEM });
-    await page.selectOption('#priority-select', 'HIGH');
-    await page.fill('#summary-input', uniqueSummary);
-    await page.fill('#description-input', 'This is an automated E2E test ticket. Please ignore.');
+    await page.selectOption('#field-category', { label: CATEGORY });
+    await page.selectOption('#field-related-system', { label: SYSTEM });
+    await page.selectOption('#field-priority', 'HIGH');
+    await page.fill('#field-summary', uniqueSummary);
+    await page.fill('#field-description', 'This is an automated E2E test ticket. Please ignore.');
 
-    await page.click('#submit-btn');
+    await page.click('#submit-ticket-btn');
 
     // Wait for success state (ticket number shown)
-    const ticketNumberEl = await page.waitForSelector('[id^="success-ticket-number"], #ticket-number-display, text=/TKT-/i', { timeout: 10_000 });
+    const ticketNumberEl = await page.waitForSelector('#created-ticket-number', { timeout: 10_000 });
     const ticketNumber = await ticketNumberEl.textContent() ?? '';
     expect(ticketNumber).toMatch(/TKT-\d{8}-\d{4}/);
 
@@ -44,18 +44,18 @@ test.describe('E2E-01: Requester Ticket Flow', () => {
     await page.fill('#search-input', uniqueSummary);
     await page.waitForSelector('#tickets-table-desktop', { timeout: 10_000 });
 
-    await expect(page.locator('text=' + uniqueSummary)).toBeVisible({ timeout: 8_000 });
+    await expect(page.locator('text=' + uniqueSummary).first()).toBeVisible({ timeout: 8_000 });
 
-    await page.click('text=' + uniqueSummary);
+    await page.locator('text=' + uniqueSummary).first().click();
     await page.waitForSelector('#ticket-detail-page', { timeout: 10_000 });
 
     await expect(page.locator('#ticket-detail-number')).toContainText('TKT-');
 
-    await expect(page.locator('text=' + uniqueSummary)).toBeVisible();
+    await expect(page.locator('text=' + uniqueSummary).first()).toBeVisible();
 
     // Verify all key fields are present as text (not inputs)
     await expect(page.locator('text=Hardware')).toBeVisible();
-    await expect(page.locator('text=ERP System')).toBeVisible();
+    await expect(page.locator(`text=${SYSTEM}`)).toBeVisible();
 
     await expect(page.locator('#attachment-section')).toBeVisible();
     // Upload input is present
@@ -82,7 +82,7 @@ test.describe('E2E-01: Requester Ticket Flow', () => {
     await page.goto(`${BASE}/login`);
     await page.waitForSelector('select', { timeout: 10_000 });
     const select = page.locator('select').first();
-    await select.selectOption({ label: REQUESTER_NAME });
+    await select.selectOption({ label: 'Alice Johnson (alice.johnson@example.com)' });
     await page.click('button:has-text("Continue")');
     await page.waitForURL(`${BASE}/`);
 
