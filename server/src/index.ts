@@ -247,9 +247,61 @@ app.get('/api/tickets', async (req: Request, res: Response) => {
   }
 });
 
-// ---------------------------------------------------------------------------
-// Issue #5 — Attachment endpoints
-// ---------------------------------------------------------------------------
+// Issue #7 — Ticket Detail API — GET /api/tickets/:id
+app.get('/api/tickets/:id', async (req: Request, res: Response) => {
+  const ticketId = Number(req.params.id);
+  if (isNaN(ticketId) || !Number.isInteger(ticketId)) {
+    res.status(400).json({ error: 'Invalid ticket id' });
+    return;
+  }
+
+  const requesterId = getRequesterId(req);
+  if (!requesterId) {
+    res.status(401).json({ error: 'Missing requester context' });
+    return;
+  }
+
+  try {
+    const ticket = await prisma.ticket.findUnique({
+      where: { id: ticketId },
+      include: {
+        category: { select: { id: true, name: true } },
+        relatedSystem: { select: { id: true, name: true } },
+        requester: { select: { id: true, name: true, email: true } },
+        attachments: {
+          orderBy: { uploadedAt: 'asc' },
+          select: {
+            id: true,
+            originalFilename: true,
+            mimeType: true,
+            size: true,
+            isRemoved: true,
+            removedReason: true,
+            removedAt: true,
+            uploadedAt: true,
+            ticketId: true,
+          },
+        },
+      },
+    });
+
+    if (!ticket) {
+      res.status(404).json({ error: 'Ticket not found' });
+      return;
+    }
+
+    if (ticket.requesterId !== requesterId) {
+      res.status(403).json({ error: 'You do not have permission to view this ticket' });
+      return;
+    }
+
+    res.status(200).json(ticket);
+  } catch (error) {
+    console.error('Ticket detail error:', error);
+    res.status(500).json({ error: 'Unable to fetch ticket' });
+  }
+});
+
 
 const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'];
 const MAX_FILE_BYTES = 5 * 1024 * 1024; // 5 MB
@@ -284,21 +336,21 @@ const upload = multer({
 const getRequesterId = (req: Request): number | null => {
   const header = req.headers['x-requester-id'];
   if (header) {
-    const id = parseInt(String(header), 10);
-    if (!isNaN(id)) return id;
+    const id = Number(header);
+    if (!isNaN(id) && Number.isInteger(id)) return id;
   }
   const query = req.query.requesterId;
   if (query) {
-    const id = parseInt(String(query), 10);
-    if (!isNaN(id)) return id;
+    const id = Number(query);
+    if (!isNaN(id) && Number.isInteger(id)) return id;
   }
   return null;
 };
 
 // POST /api/tickets/:id/attachments — upload a file
 app.post('/api/tickets/:id/attachments', (req: Request, res: Response) => {
-  const ticketId = parseInt(String(req.params.id), 10);
-  if (isNaN(ticketId)) {
+  const ticketId = Number(req.params.id);
+  if (isNaN(ticketId) || !Number.isInteger(ticketId)) {
     res.status(400).json({ error: 'Invalid ticket id' });
     return;
   }
@@ -376,8 +428,8 @@ app.post('/api/tickets/:id/attachments', (req: Request, res: Response) => {
 
 // GET /api/tickets/:id/attachments — list all attachments (active + removed metadata)
 app.get('/api/tickets/:id/attachments', async (req: Request, res: Response) => {
-  const ticketId = parseInt(String(req.params.id), 10);
-  if (isNaN(ticketId)) {
+  const ticketId = Number(req.params.id);
+  if (isNaN(ticketId) || !Number.isInteger(ticketId)) {
     res.status(400).json({ error: 'Invalid ticket id' });
     return;
   }
@@ -420,8 +472,8 @@ app.get('/api/tickets/:id/attachments', async (req: Request, res: Response) => {
 
 // GET /api/attachments/:id/download — download active file; 403 for removed
 app.get('/api/attachments/:id/download', async (req: Request, res: Response) => {
-  const id = parseInt(String(req.params.id), 10);
-  if (isNaN(id)) {
+  const id = Number(req.params.id);
+  if (isNaN(id) || !Number.isInteger(id)) {
     res.status(400).json({ error: 'Invalid attachment id' });
     return;
   }
@@ -463,8 +515,8 @@ app.get('/api/attachments/:id/download', async (req: Request, res: Response) => 
 
 // DELETE /api/attachments/:id — soft-remove (reason required)
 app.delete('/api/attachments/:id', async (req: Request, res: Response) => {
-  const id = parseInt(String(req.params.id), 10);
-  if (isNaN(id)) {
+  const id = Number(req.params.id);
+  if (isNaN(id) || !Number.isInteger(id)) {
     res.status(400).json({ error: 'Invalid attachment id' });
     return;
   }
