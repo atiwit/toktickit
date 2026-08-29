@@ -1,7 +1,6 @@
 import React from 'react';
-import { Navigate } from 'react-router-dom';
+import { Navigate, Outlet } from 'react-router-dom';
 import { useRequester } from '../context/RequesterContext';
-import AppShell from './AppShell';
 
 const ProtectedRoute: React.FC = () => {
   const { selectedRequester } = useRequester();
@@ -10,9 +9,7 @@ const ProtectedRoute: React.FC = () => {
     return <Navigate to="/login" replace />;
   }
 
-  return (
-    <AppShell />
-  );
+  return <Outlet />;
 };
 
 export default ProtectedRoute;

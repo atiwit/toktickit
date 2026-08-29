@@ -31,7 +31,7 @@ test.describe('E2E-01: Requester Ticket Flow', () => {
     await page.waitForSelector('select', { timeout: 10_000 });
 
     const select = page.locator('select').first();
-    await select.selectOption({ label: 'Alice Johnson (alice.johnson@example.com)' });
+    await select.selectOption({ label: 'Alice Johnson' });
     await page.click('button:has-text("Continue")');
 
     await expect(page).toHaveURL(`${BASE}/`);
@@ -89,7 +89,7 @@ test.describe('E2E-01: Requester Ticket Flow', () => {
     await page.goto(`${BASE}/login`);
     await page.waitForSelector('select', { timeout: 10_000 });
     const select = page.locator('select').first();
-    await select.selectOption({ label: 'Alice Johnson (alice.johnson@example.com)' });
+    await select.selectOption({ label: 'Alice Johnson' });
     await page.click('button:has-text("Continue")');
     await page.waitForURL(`${BASE}/`);
 
