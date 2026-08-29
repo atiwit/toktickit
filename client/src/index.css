@@ -316,3 +316,19 @@ label {
   }
 }
 
+/* ──────────────────────────────────────────────
+   My Tickets Responsive Layout
+────────────────────────────────────────────── */
+#tickets-list-mobile {
+  display: none;
+}
+
+@media (max-width: 767px) {
+  #tickets-table-desktop {
+    display: none;
+  }
+  #tickets-list-mobile {
+    display: block;
+  }
+}
+

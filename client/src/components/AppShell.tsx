@@ -17,12 +17,12 @@ const AppShell: React.FC = () => {
   const isLogin = location.pathname === '/login';
 
   return (
-    <div className="app-shell" style={{ backgroundColor: '#f9f9f9', minHeight: '100vh' }}>
+    <div className="app-shell" style={{ backgroundColor: '#F5F7F6', minHeight: '100vh' }}>
       {/* Top Navbar */}
-      <Navbar style={{ backgroundColor: '#0f5132' }} variant="dark" expand="lg" className="px-3 shadow-sm py-2">
+      <Navbar style={{ backgroundColor: '#006B3C' }} variant="dark" expand="lg" className="px-3 shadow-sm py-2">
         <Container fluid>
           <Navbar.Brand as={NavLink} to="/" className="d-flex align-items-center gap-2" style={{ fontWeight: 700, fontSize: '1.4rem' }}>
-            <Clock size={28} /> TikTockIT
+            <Clock size={28} /> TokTickIT
           </Navbar.Brand>
           <Navbar.Toggle aria-controls="main-navbar-nav" />
           <Navbar.Collapse id="main-navbar-nav">
@@ -48,7 +48,7 @@ const AppShell: React.FC = () => {
             <Nav className="ms-auto">
               <Dropdown align="end">
                 <Dropdown.Toggle variant="transparent" className="text-white border-0 d-flex align-items-center gap-2" id="profile-dropdown" style={{ boxShadow: 'none' }}>
-                  <div className="bg-white rounded-circle d-flex align-items-center justify-content-center" style={{ width: 32, height: 32, color: '#0f5132' }}>
+                  <div className="bg-white rounded-circle d-flex align-items-center justify-content-center" style={{ width: 32, height: 32, color: '#006B3C' }}>
                     <User size={20} />
                   </div>
                   Profile
