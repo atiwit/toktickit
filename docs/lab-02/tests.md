@@ -14,31 +14,31 @@ Coverage levels: Unit · API · UI Component · E2E · Visual/Responsive
 
 | Test ID | Level | Issue | AC(s) | What It Tests | Expected Result | Test File | Status |
 |---|---|---|---|---|---|---|---|
-| UNIT-01 | Unit | #4 | BR-01 | Ticket Number format TKT-YYYYMMDD-NNNN | Correct format, zero-padded, no duplicates | `server/tests/lab-02/utils.unit.test.ts` | — |
-| API-01 | API | #4 | AC-01 | `POST /api/tickets` valid body | 201 + ticketNumber returned | `server/tests/lab-02/create-ticket.api.test.ts` | — |
-| API-02 | API | #4 | AC-04 | `POST /api/tickets` missing summary | 400 + `fields.summary` error | `server/tests/lab-02/create-ticket.api.test.ts` | — |
-| API-03 | API | #4 | AC-04 | `POST /api/tickets` invalid requesterId | 400 + `fields.requesterId` error | `server/tests/lab-02/create-ticket.api.test.ts` | — |
-| API-04 | API | #6 | AC-05 | `GET /api/tickets` cross-requester ownership | 403 when requesterId mismatch | `server/tests/lab-02/my-tickets.api.test.ts` | — |
-| API-05 | API | #6 | AC-05 | `GET /api/tickets` pagination metadata | totalCount, totalPages, currentPage returned | `server/tests/lab-02/my-tickets.api.test.ts` | — |
-| API-06 | API | #7 | AC-03 | `GET /api/tickets/:id` wrong Requester | 403, no data leaked | `server/tests/lab-02/ticket-detail.api.test.ts` | — |
-| API-07 | API | #7 | AC-03 | `GET /api/tickets/:id` owned ticket | 200 + full ticket data | `server/tests/lab-02/ticket-detail.api.test.ts` | — |
-| API-08 | API | #5 | AC-06 | Upload valid attachment | 201 | `server/tests/lab-02/attachments.api.test.ts` | — |
-| API-09 | API | #5 | AC-06 | Upload wrong MIME type | 400 | `server/tests/lab-02/attachments.api.test.ts` | — |
-| API-10 | API | #5 | AC-06 | Upload over 5 MB | 400 | `server/tests/lab-02/attachments.api.test.ts` | — |
-| API-11 | API | #5 | AC-06 | Upload >5 active per ticket | 400 | `server/tests/lab-02/attachments.api.test.ts` | — |
-| API-12 | API | #5 | AC-07 | Download removed attachment | 403 | `server/tests/lab-02/attachments.api.test.ts` | — |
-| API-13 | API | #5 | AC-07 | Soft-remove with reason | 200, isRemoved=true | `server/tests/lab-02/attachments.api.test.ts` | — |
-| UI-01 | UI | #3 | AC-02 | Requester Selection renders dropdown | Dropdown present, inactive excluded | `client/src/__tests__/lab-02/RequesterSelection.test.tsx` | — |
-| UI-02 | UI | #4 | AC-04 | Create Ticket — empty submit shows field errors | Error messages below each required field | `client/src/__tests__/lab-02/CreateTicket.test.tsx` | — |
-| UI-03 | UI | #4 | AC-01 | Create Ticket — success state | Ticket Number displayed | `client/src/__tests__/lab-02/CreateTicket.test.tsx` | — |
-| UI-04 | UI | #5 | AC-06 | Attachment section — active vs removed | Download on active, hidden on removed | `client/src/__tests__/lab-02/AttachmentSection.test.tsx` | — |
-| UI-05 | UI | #6 | AC-05 | My Tickets — empty state | "No tickets yet" message shown | `client/src/__tests__/lab-02/MyTickets.test.tsx` | — |
-| UI-06 | UI | #6 | AC-05 | My Tickets — requester switch reloads | List refreshes with new requester's tickets | `client/src/__tests__/lab-02/MyTickets.test.tsx` | — |
-| UI-07 | UI | #7 | AC-03 | Ticket Detail — wrong requester state | Error shown, no ticket data displayed | `client/src/__tests__/lab-02/RequesterTicketDetail.test.tsx` | — |
-| E2E-01 | E2E | #7 | AC-01, AC-05 | Select Requester → Create Ticket → find in My Tickets | Ticket visible in list with correct number | `e2e/lab-02/requester-ticket-flow.spec.ts` | — |
-| VIS-01 | Visual | #7 | UI | Create Ticket at 1280 px, 768 px, 375 px | No scroll, no clipping, all controls accessible | Playwright screenshot | — |
-| VIS-02 | Visual | #7 | UI | My Tickets at 1280 px, 768 px, 375 px | No scroll, no clipping | Playwright screenshot | — |
-| VIS-03 | Visual | #7 | UI | Ticket Detail at 1280 px, 768 px, 375 px | No scroll, no clipping | Playwright screenshot | — |
+| UNIT-01 | Unit | #4 | BR-01 | Ticket Number format TKT-YYYYMMDD-NNNN | Correct format, zero-padded, no duplicates | `server/tests/lab-02/utils.unit.test.ts` | Passed |
+| API-01 | API | #4 | AC-01 | `POST /api/tickets` valid body | 201 + ticketNumber returned | `server/tests/lab-02/create-ticket.api.test.ts` | Passed |
+| API-02 | API | #4 | AC-04 | `POST /api/tickets` missing summary | 400 + `fields.summary` error | `server/tests/lab-02/create-ticket.api.test.ts` | Passed |
+| API-03 | API | #4 | AC-04 | `POST /api/tickets` invalid requesterId | 400 + `fields.requesterId` error | `server/tests/lab-02/create-ticket.api.test.ts` | Passed |
+| API-04 | API | #6 | AC-05 | `GET /api/tickets` cross-requester ownership | 403 when requesterId mismatch | `server/tests/lab-02/my-tickets.api.test.ts` | Passed |
+| API-05 | API | #6 | AC-05 | `GET /api/tickets` pagination metadata | totalCount, totalPages, currentPage returned | `server/tests/lab-02/my-tickets.api.test.ts` | Passed |
+| API-06 | API | #7 | AC-03 | `GET /api/tickets/:id` wrong Requester | 403, no data leaked | `server/tests/lab-02/ticket-detail.api.test.ts` | Passed |
+| API-07 | API | #7 | AC-03 | `GET /api/tickets/:id` owned ticket | 200 + full ticket data | `server/tests/lab-02/ticket-detail.api.test.ts` | Passed |
+| API-08 | API | #5 | AC-06 | Upload valid attachment | 201 | `server/tests/lab-02/attachments.api.test.ts` | Passed |
+| API-09 | API | #5 | AC-06 | Upload wrong MIME type | 400 | `server/tests/lab-02/attachments.api.test.ts` | Passed |
+| API-10 | API | #5 | AC-06 | Upload over 5 MB | 400 | `server/tests/lab-02/attachments.api.test.ts` | Passed |
+| API-11 | API | #5 | AC-06 | Upload >5 active per ticket | 400 | `server/tests/lab-02/attachments.api.test.ts` | Passed |
+| API-12 | API | #5 | AC-07 | Download removed attachment | 403 | `server/tests/lab-02/attachments.api.test.ts` | Passed |
+| API-13 | API | #5 | AC-07 | Soft-remove with reason | 200, isRemoved=true | `server/tests/lab-02/attachments.api.test.ts` | Passed |
+| UI-01 | UI | #3 | AC-02 | Requester Selection renders dropdown | Dropdown present, inactive excluded | `client/src/__tests__/lab-02/RequesterSelection.test.tsx` | Passed |
+| UI-02 | UI | #4 | AC-04 | Create Ticket — empty submit shows field errors | Error messages below each required field | `client/src/__tests__/lab-02/CreateTicket.test.tsx` | Passed |
+| UI-03 | UI | #4 | AC-01 | Create Ticket — success state | Ticket Number displayed | `client/src/__tests__/lab-02/CreateTicket.test.tsx` | Passed |
+| UI-04 | UI | #5 | AC-06 | Attachment section — active vs removed | Download on active, hidden on removed | `client/src/__tests__/lab-02/AttachmentSection.test.tsx` | Passed |
+| UI-05 | UI | #6 | AC-05 | My Tickets — empty state | "No tickets yet" message shown | `client/src/__tests__/lab-02/MyTickets.test.tsx` | Passed |
+| UI-06 | UI | #6 | AC-05 | My Tickets — requester switch reloads | List refreshes with new requester's tickets | `client/src/__tests__/lab-02/MyTickets.test.tsx` | Passed |
+| UI-07 | UI | #7 | AC-03 | Ticket Detail — wrong requester state | Error shown, no ticket data displayed | `client/src/__tests__/lab-02/RequesterTicketDetail.test.tsx` | Passed |
+| E2E-01 | E2E | #7 | AC-01, AC-05 | Select Requester → Create Ticket → find in My Tickets | Ticket visible in list with correct number | `e2e/lab-02/requester-ticket-flow.spec.ts` | Passed |
+| VIS-01 | Visual | #7 | UI | Create Ticket at 1280 px, 768 px, 375 px | No scroll, no clipping, all controls accessible | Playwright screenshot | Passed |
+| VIS-02 | Visual | #7 | UI | My Tickets at 1280 px, 768 px, 375 px | No scroll, no clipping | Playwright screenshot | Passed |
+| VIS-03 | Visual | #7 | UI | Ticket Detail at 1280 px, 768 px, 375 px | No scroll, no clipping | Playwright screenshot | Passed |
 
 ---
 
@@ -90,11 +90,11 @@ npx playwright test e2e/lab-02/
 
 | Suite | Total | Passed | Failed |
 |---|---|---|---|
-| Unit (UNIT-xx) | — | — | — |
-| API (API-xx) | — | — | — |
-| UI (UI-xx) | — | — | — |
-| E2E (E2E-xx) | — | — | — |
-| Visual (VIS-xx) | — | — | — |
+| Unit (UNIT-xx) | 14 | 14 | 0 |
+| API (API-xx) | 44 | 44 | 0 |
+| UI (UI-xx) | 42 | 42 | 0 |
+| E2E (E2E-xx) | 4 | 4 | 0 |
+| Visual (VIS-xx) | 9 | 9 | 0 |
 
 ---
 

@@ -4,7 +4,6 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import CreateTicket from '../../pages/CreateTicket';
 import { RequesterContext } from '../../context/RequesterContext';
 
-// ─── Shared mock data ────────────────────────────────────────
 
 const MOCK_REQUESTER = { id: 1, name: 'Alice', email: 'alice@example.com' };
 
@@ -31,7 +30,6 @@ const MOCK_CREATED_TICKET = {
   requester: { id: 1, name: 'Alice' },
 };
 
-// ─── Wrapper — provides RequesterContext ─────────────────────
 
 const renderWithRequester = (requester = MOCK_REQUESTER) => {
   const contextValue = {

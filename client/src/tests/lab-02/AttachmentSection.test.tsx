@@ -44,8 +44,19 @@ beforeEach(() => {
 });
 
 
+import { RequesterContext } from '../../context/RequesterContext';
+
+const defaultContext = {
+  selectedRequester: { id: 1, name: 'Alice', email: 'alice@example.com', isActive: true },
+  changeRequester: vi.fn(),
+};
+
 const renderSection = (ticketId = 1) =>
-  render(<AttachmentSection ticketId={ticketId} />);
+  render(
+    <RequesterContext.Provider value={defaultContext}>
+      <AttachmentSection ticketId={ticketId} />
+    </RequesterContext.Provider>
+  );
 
 
 describe('UI-ATT-01 — Renders attachment list', () => {
@@ -99,7 +110,7 @@ describe('UI-ATT-02 — Active attachment has a download button', () => {
     // The download anchor has id="download-btn-1"
     const downloadLink = document.getElementById('download-btn-1');
     expect(downloadLink).not.toBeNull();
-    expect(downloadLink).toHaveAttribute('href', '/api/attachments/1/download');
+    expect(downloadLink).toHaveAttribute('href', '/api/attachments/1/download?requesterId=1');
   });
 });
 

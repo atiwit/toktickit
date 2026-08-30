@@ -4,6 +4,7 @@ import { RequesterProvider } from './context/RequesterContext';
 import RequesterSelector from './pages/RequesterSelector';
 import CreateTicket from './pages/CreateTicket';
 import ProtectedRoute from './components/ProtectedRoute';
+import AppShell from './components/AppShell';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import './index.css';
 
@@ -15,15 +16,17 @@ function App() {
     <RequesterProvider>
       <BrowserRouter>
         <Routes>
-          <Route path="/login" element={<RequesterSelector />} />
+          <Route element={<AppShell />}>
+            <Route path="/login" element={<RequesterSelector />} />
 
-          <Route element={<ProtectedRoute />}>
-            <Route path="/" element={<MyTickets />} />
-            <Route path="/create-ticket" element={<CreateTicket />} />
-            <Route path="/tickets/:id" element={<TicketDetailPage />} />
+            <Route element={<ProtectedRoute />}>
+              <Route path="/" element={<MyTickets />} />
+              <Route path="/create-ticket" element={<CreateTicket />} />
+              <Route path="/tickets/:id" element={<TicketDetailPage />} />
+            </Route>
+
+            <Route path="*" element={<Navigate to="/" replace />} />
           </Route>
-
-          <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </BrowserRouter>
     </RequesterProvider>
