@@ -30,26 +30,115 @@
 ## 3. Screens
 
 ### Requester Selection Screen
-> TODO: Layout, elements, states (loading / empty / API failure).
+
+**Route:** `/login`
+
+**Layout:** Card กึ่งกลางหน้า (max-width 800px) บน background `--color-bg`
+
+**Elements:**
+- Icon วงกลม Zen Green (UserCog) ด้านบนกึ่งกลาง
+- Heading: "Select Development Requester"
+- Subtext: บอกว่าเป็น Dev/Testing context ไม่ใช่ Login จริง
+- `<select>` dropdown: Active Requesters เท่านั้น (จาก `GET /api/requesters`)
+- Info alert (pale green): "Only active development requesters are shown."
+- Notice card: "Authentication coming in Lab 3"
+- Buttons: **Cancel** (reload page), **Continue** (submit → redirect `/`)
+
+**States:**
+
+| State | UI |
+|---|---|
+| Loading | Spinner สี success กึ่งกลาง |
+| API Error | Alert danger + error message |
+| Empty | Alert warning "No active requesters found" |
+| Normal | Form + Dropdown + Buttons |
+
+---
 
 ### Create Ticket Screen
-> TODO: Field layout, validation placement, success/failure states.
+
+**Route:** `/create-ticket`
+
+**Layout:** Form Card (max-width 800px), field-level error messages ใต้แต่ละ field
+
+**Fields:**
+
+| Field | Type | Rules |
+|---|---|---|
+| Category | select | Required |
+| Related System | select | Required |
+| Requested Priority | select (LOW/MEDIUM/HIGH/CRITICAL) | Required |
+| Summary | text input | Required, max 200 chars + counter |
+| Description | textarea | Required, max 2000 chars + counter |
+| Attachments | file input (multiple) | Optional, JPG/PNG/WEBP/PDF, ≤ 5 MB |
+
+**States:**
+
+| State | UI |
+|---|---|
+| Default | Form active, Submit enabled |
+| Submitting | Submit disabled + spinner |
+| Validation Error | Red messages ใต้ field ที่ผิด |
+| API Error | Alert บนสุด, ค่า form ยังคงอยู่ |
+| Success | Redirect ไป Ticket Detail |
+
+---
 
 ### My Tickets Screen
-> TODO: Table (desktop) / card (mobile), search/filter/sort/pagination, empty & no-results states.
+
+**Route:** `/` (protected)
+
+**Layout:**
+- Header: "My Tickets" + ปุ่ม Create Ticket
+- Filter Bar: Search + Status + Category + Priority + Sort + Page size
+- Desktop ≥ 992 px: Table (Ticket No. / Summary / Status / Priority / Category / Date)
+- Mobile < 768 px: Card stack
+
+**Pagination:** "Showing X–Y of Z", Previous/Next, page numbers
+
+**States:**
+
+| State | UI |
+|---|---|
+| Loading | Spinner |
+| Empty | Empty state + "Create your first ticket" |
+| No Results | No-results state + "Clear Filters" button |
+| Normal | Table / Card list + pagination |
+
+---
 
 ### Ticket Detail Screen (View Mode)
-> TODO: Read-only layout, attachment section, soft-removal dialog.
+
+**Route:** `/tickets/:id`
+
+**Layout:** Read-only grid (2-col Desktop / 1-col Mobile) + Attachment section
+
+**Fields (read-only):** Ticket Number, Status badge, Priority badge, Category, Related System, Summary, Description, Created At
+
+**Attachment Section:**
+- **Active:** ชื่อไฟล์ + ขนาด + Download + Remove button
+- **Removed:** ชื่อไฟล์ + "Removed" badge + เหตุผล + วันที่ลบ (ไม่มี Download)
+- Upload button (disabled เมื่อ active ≥ 5)
+- Remove dialog: textarea reason (max 500 chars) + Confirm / Cancel
+
+**States:**
+
+| State | UI |
+|---|---|
+| Loading | Spinner |
+| Not Found | Error card "Ticket not found" |
+| Access Denied | Error card "You do not have permission" |
+| Normal | Read-only detail + Attachment list |
 
 ---
 
 ## 4. Visual Checklist
 
-> To be completed with screenshots in `artifacts/lab-02/screenshots/` during testing.
+> Screenshots อยู่ใน `artifacts/lab-02/screenshots/` (สร้างระหว่าง E2E testing)
 
-- [ ] No horizontal scroll at any breakpoint
-- [ ] No label clipping or overlap
-- [ ] Error messages below correct field
-- [ ] Read-only fields visually distinct from editable
-- [ ] Priority and Status badges consistent
-- [ ] Requester name visible in header
+- [x] No horizontal scroll at any breakpoint
+- [x] No label clipping or overlap
+- [x] Error messages below correct field
+- [x] Read-only fields visually distinct from editable
+- [x] Priority and Status badges consistent
+- [x] Requester name visible in header

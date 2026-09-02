@@ -2,13 +2,13 @@
 
 ## 1. Sprint Goal
 
-> TODO: One short paragraph describing the value delivered by this sprint.
+Sprint นี้มีเป้าหมายเพื่อส่งมอบ MVP ของระบบ TokTickIT สำหรับฝั่ง Requester โดยสมบูรณ์ ซึ่งประกอบด้วยการสร้าง Ticket, ดูรายการ Ticket, ดูรายละเอียด Ticket, และจัดการ Attachment (อัปโหลด, ดาวน์โหลด, soft-remove) ทั้งหมดนี้ทำงานภายใต้ Zen Green Theme ที่ตอบสนอง (Responsive) ครบทุก Breakpoint พร้อม API ที่ enforce ownership อย่างเข้มงวด
 
 ---
 
 ## 2. Stakeholder Request Interpretation
 
-> TODO: Concise interpretation of the stakeholder request in your own words.
+Stakeholder ต้องการระบบ IT Support Ticketing ที่ให้ผู้ใช้งานฝ่าย Requester สามารถส่ง Ticket แจ้งปัญหาได้ด้วยตนเอง และสามารถ Track สถานะรวมถึงแนบไฟล์หลักฐานได้ โดยในระยะนี้ยังไม่มีระบบ Authentication จริง จึงใช้กลไก Development Requester Selection เพื่อจำลอง Context ของผู้ใช้งานสำหรับการทดสอบ ระบบต้องแยกข้อมูลของ Requester แต่ละคนออกจากกันอย่างเด็ดขาดผ่านการตรวจสอบ Ownership ในทุก API
 
 ---
 
@@ -70,41 +70,97 @@
 
 ## 6. UI Specification Summary
 
-> TODO: Brief summary of screen layouts, states, and reference to `ui-spec.md`.
+ทุกหน้าใช้ **Zen Green Theme** โดยมี CSS Variables หลักคือ `--color-primary: #006B3C` และ `--color-secondary: #0B7A46` สำหรับสีหลัก, `--color-bg: #F5F7F6` เป็น Page background และ `--color-surface: #FFFFFF` สำหรับ Card/Form
+
+| Screen | Layout | States |
+|---|---|---|
+| Requester Selection | Card กลางหน้า (max-width 800px) + Dropdown | Loading spinner, Empty alert, API error alert |
+| Create Ticket | Form layout, field-level validation messages | Submitting (disabled button + spinner), Success redirect, API error (form preserved) |
+| My Tickets | Table (desktop) / Card stack (mobile) | Empty state, No-results + Clear Filters, Paginated |
+| Ticket Detail | Read-only field grid + Attachment list | Loading, Not Found, Access Denied |
+
+รายละเอียดครบถ้วนอยู่ใน [`ui-spec.md`](./ui-spec.md)
 
 ---
 
 ## 7. Data Changes
 
-> TODO: Models, fields, relationships, enums, indexes, migration decisions.
+### Models
+
+| Model | คำอธิบาย |
+|---|---|
+| `RequesterUser` | ผู้ใช้งานชั่วคราวสำหรับ Dev (Lab 2 เท่านั้น) ประกอบด้วย `id`, `name`, `email`, `isActive` |
+| `Category` | Reference data สำหรับหมวดหมู่ Ticket มี `isActive` flag |
+| `RelatedSystem` | Reference data สำหรับระบบที่เกี่ยวข้อง มี `isActive` flag |
+| `Ticket` | หน่วยหลัก ประกอบด้วย `ticketNumber` (unique, backend-generated), `status` (default `NEW`), `requestedPriority`, `summary`, `description` และ FK ไปยัง `RequesterUser`, `Category`, `RelatedSystem` |
+| `Attachment` | ไฟล์แนบ ประกอบด้วย `originalFilename`, `storedFilename` (UUID-based), `mimeType`, `size`, `isRemoved`, `removedReason`, `removedAt` |
+
+### Enums
+
+| Enum | Values |
+|---|---|
+| `Priority` | `LOW`, `MEDIUM`, `HIGH`, `CRITICAL` |
+| `TicketStatus` | `NEW`, `OPEN`, `IN_PROGRESS`, `RESOLVED`, `CLOSED` |
+
+### Indexes
+
+- `Ticket`: index บน `requesterId`, `status`, `ticketNumber` (รองรับ BR-10 query pattern)
+- `Attachment`: index บน `ticketId`
+
+### การออกแบบเพื่อรองรับ Lab 3 (BR-18)
+
+`Ticket.requesterId` เป็น FK ชี้ไปที่ `RequesterUser.id` เท่านั้น การเปลี่ยนเป็น `User` model จริงใน Lab 3 ต้องการเพียง migration เปลี่ยน FK target โดยไม่ต้อง migrate ข้อมูล Ticket
 
 ---
 
 ## 8. API Contract
 
-> TODO: Endpoint list with methods, paths, and purpose. Full detail in `api-spec.md`.
+| Method | Path | Purpose |
+|---|---|---|
+| GET | `/api/health` | Health check |
+| GET | `/api/requesters` | List active Development Requesters |
+| GET | `/api/categories` | List active Categories |
+| GET | `/api/related-systems` | List active Related Systems |
+| POST | `/api/tickets` | Create a Ticket |
+| GET | `/api/tickets` | List owned Tickets (paginated + search/filter/sort) |
+| GET | `/api/tickets/:id` | Get one owned Ticket detail |
+| POST | `/api/tickets/:id/attachments` | Upload Attachment |
+| GET | `/api/tickets/:id/attachments` | List Attachment metadata |
+| GET | `/api/attachments/:id/download` | Download active Attachment |
+| DELETE | `/api/attachments/:id` | Soft-remove an Attachment |
+
+Requester identity ส่งผ่าน HTTP Header `X-Requester-Id: <id>` ในทุก request ที่ต้องการ ownership check
+
+รายละเอียด Request/Response shape ครบถ้วนอยู่ใน [`api-spec.md`](./api-spec.md)
 
 ---
 
 ## 9. Acceptance Criteria
 
-- AC-01 Given valid Ticket data, when submitted, then a Ticket is saved and the Ticket Number is displayed.
-- AC-02 Given no Requester is selected, when navigating to a protected screen, then the Requester Selection screen is shown.
-- AC-03 Given Requester B is selected, when requesting a Ticket owned by Requester A, then 403 is returned.
-- AC-04 ...
+- **AC-01** Given valid Ticket data, when submitted, then a Ticket is saved and the Ticket Number is displayed.
+- **AC-02** Given no Requester is selected, when navigating to a protected screen, then the Requester Selection screen is shown.
+- **AC-03** Given Requester B is selected, when requesting a Ticket owned by Requester A, then 403 is returned.
+- **AC-04** Given a Ticket with 5 active attachments, when uploading another file, then 400 is returned with an appropriate error message.
+- **AC-05** Given a valid attachment, when soft-removing with a reason, then `isRemoved = true` and the download button disappears.
+- **AC-06** Given the My Tickets screen, when searching by keyword, then only matching tickets are shown; when no results, the no-results state with Clear Filters is displayed.
+- **AC-07** Given any screen, when viewed on mobile (< 768 px), then no horizontal scroll occurs.
 
 ---
 
 ## 10. Definition of Done
 
-- [ ] All FRs implemented
-- [ ] All ACs satisfied with passing tests
-- [ ] All docs committed before implementation PRs merged
-- [ ] README setup instructions current
+- [x] All FRs implemented
+- [x] All ACs satisfied with passing tests
+- [x] All docs committed before implementation PRs merged
+- [x] README setup instructions current
 - [ ] All Kanban Issues moved to Done
 
 ---
 
 ## 11. Assumptions and Decisions
 
-> TODO: Only meaningful choices not already fixed by the labsheet.
+- **Ticket Number Format:** ใช้รูปแบบ `TKT-YYYYMMDD-NNNN` (เช่น `TKT-20260901-0001`) โดย NNNN reset เป็น 0001 ทุกวัน — ตัดสินใจนี้เพื่อให้ Ticket Number อ่านง่ายและระบุวันที่สร้างได้ทันที
+- **Requester Identity Header:** ใช้ `X-Requester-Id` header (หรือ query param fallback) แทน session/token เพราะยังไม่มี Auth ใน Lab 2 — ออกแบบให้เปลี่ยนได้ง่ายใน Lab 3
+- **Soft-remove endpoint:** ใช้ `DELETE /api/attachments/:id` (ไม่ใช่ PATCH) เพราะ semantics ของ HTTP DELETE ตรงกับ "ลบ" แม้การลบจะเป็น soft-delete ก็ตาม
+- **Attachment Cleanup:** เมื่อ upload ล้มเหลวหลังจาก ticket ถูก save แล้ว (BR-09) ไฟล์ที่อยู่บน disk จะถูก cleanup ด้วย `fs.unlinkSync` แต่ ticket ถูก keep ไว้
+- **My Tickets sort:** ปัจจุบัน sort รองรับ `date_asc` / `date_desc` (default) เท่านั้น เพราะ frontend ใช้ Created Date เป็นหลัก
