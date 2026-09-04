@@ -80,6 +80,7 @@
 | #29 | feat: implement My Tickets screen with API, UI, and tests | `feature/lab2-my-tickets` | [#29](https://github.com/atiwit/toktickit/pull/29) |
 | #30 | feat: implement Ticket Detail screen and E2E testing | `feature/lab2-ticket-detail` | [#30](https://github.com/atiwit/toktickit/pull/30) |
 | #31 | feat: implement Zen Green theme and responsive polish | `feature/lab2-ui-implement` | [#31](https://github.com/atiwit/toktickit/pull/31) |
+| #32 | adding completed docs and preparing to merge into main | `lab2-staging` | [#32](https://github.com/atiwit/toktickit/pull/32) |
 
 ---
 
@@ -174,11 +175,25 @@
 
 ---
 
+### [PR #32](https://github.com/atiwit/toktickit/pull/32) — adding completed docs and preparing to merge into main · **Approved by @Alongkron1234, @copter549365, @JeffMerry, @krittaphato3**
+
+**Review Comment from my partners:**
+> เอกสาร docs ครบถ้วนสมบูรณ์ พร้อม merge เข้า main ได้เลยครับ
+
+---
+
 ## Evidence: I Reviewed and Approved My Partner's PRs
 
 ---
 
-### Repo: [Alongkron1234/toktickit](https://github.com/Alongkron1234/toktickit)
+### Repo: [Alongkron1234/toktickit](https://github.com/Alongkron1234/toktickit) (16 PRs total)
+
+---
+
+### [PR #20](https://github.com/Alongkron1234/toktickit/pull/20) — Lab2: Engineering Specification Plan · **Approved**
+
+**My Review Comment:**
+> เอกสาร Engineering Specification ครบถ้วนดีครับ โครงสร้าง docs เรียบร้อย ลุยต่อได้เลย
 
 ---
 
@@ -206,6 +221,13 @@
 
 ---
 
+### [PR #24](https://github.com/Alongkron1234/toktickit/pull/24) — Issue5: implement create Ticket UI, submission interaction and edit test · **Approved**
+
+**My Review Comment:**
+> UI Create Ticket ดูดีครับ form submission ทำงานถูกต้อง test ครอบคลุมดี ผ่านครับ
+
+---
+
 ### [PR #25](https://github.com/Alongkron1234/toktickit/pull/25) — feat: implement GET API with ownership data, search, filter · **Approved**
 
 **My Inline Comment:**
@@ -226,6 +248,13 @@
 
 ---
 
+### [PR #27](https://github.com/Alongkron1234/toktickit/pull/27) — Issue8: Ticket Detail View and Attachment lifecycle · **Approved**
+
+**My Review Comment:**
+> Ticket Detail ครบถ้วนดีครับ Attachment lifecycle ทำได้ดี ผ่านได้
+
+---
+
 ### [PR #28](https://github.com/Alongkron1234/toktickit/pull/28) — Issue9: add playwright e2e tests and multi-viewport screenshots · **Approved**
 
 **My Review Comment:**
@@ -233,7 +262,21 @@
 
 ---
 
-### Repo: [krittaphato3/TokTickIT](https://github.com/krittaphato3/TokTickIT)
+### [PR #29](https://github.com/Alongkron1234/toktickit/pull/29) — Docs · **Approved**
+
+**My Review Comment:**
+> เอกสาร docs ครบถ้วนดีครับ ผ่านได้
+
+---
+
+### [PR #30](https://github.com/Alongkron1234/toktickit/pull/30) — Edit reviewer.md & ai-use.md Ver.2 · **Approved**
+
+**My Review Comment:**
+> อัปเดต reviewer.md และ ai-use.md เรียบร้อยดีครับ ผ่าน!
+
+---
+
+### Repo: [krittaphato3/TokTickIT](https://github.com/krittaphato3/TokTickIT) (17 PRs total)
 
 ---
 
@@ -254,10 +297,63 @@
 
 ---
 
+### [PR #32](https://github.com/krittaphato3/TokTickIT/pull/32) — feat(lab2): Issue #17 ticket detail and attachment lifecycle · **Approved**
+
+**My Review Comment:**
+> Ticket Detail และ Attachment lifecycle ทำได้ครบถ้วนดีครับ ผ่านได้!
+
+---
+
 ### [PR #35](https://github.com/krittaphato3/TokTickIT/pull/35) — release(lab2): Lab 2 Requester Ticketing MVP staging to main · **Approved**
 
 **My Review Comment:**
 > Approved bro! Everything is jingle bell!!
+
+---
+
+### Repo: [JeffMerry/toktickit](https://github.com/JeffMerry/toktickit) (12 PRs total)
+
+---
+
+### [PR #17](https://github.com/JeffMerry/toktickit/pull/17) — feat: requester-context · **Approved**
+
+**My Review Comment:**
+> Requester Context ครบถ้วนดีครับ API กับ UI ทำงานถูกต้อง ลุยต่อได้เลย
+
+---
+
+### [PR #18](https://github.com/JeffMerry/toktickit/pull/18) — Feature/7 lab2 create ticket workflow · **Approved**
+
+**My Review Comment:**
+> Create Ticket workflow ดูดีครับ form validation กับ submission ทำงานปกติ ผ่านได้
+
+---
+
+### [PR #19](https://github.com/JeffMerry/toktickit/pull/19) — Feature/8 lab2 my tickets list · **Approved**
+
+**My Review Comment:**
+> My Tickets list ครบถ้วนดีครับ search กับ filter ทำงานได้ดี ผ่าน!
+
+---
+
+### [PR #20](https://github.com/JeffMerry/toktickit/pull/20) — Feature/9 lab2 ticket detail · **Approved**
+
+**My Review Comment:**
+> Ticket Detail screen ดูดีครับ ครบถ้วนทุกส่วน ผ่านได้เลย
+
+---
+
+### [PR #21](https://github.com/JeffMerry/toktickit/pull/21) — Feature/10 lab2 release integration · **Approved**
+
+**My Review Comment:**
+> Release integration ดูเรียบร้อยดีครับ ผ่านได้
+
+---
+
+### [PR #22](https://github.com/JeffMerry/toktickit/pull/22) — Release: Lab 2 TokTickIT Requester Workflow & Attachment Lifecycle · **Approved**
+
+**My Review Comment:**
+> Release PR ครบถ้วนสมบูรณ์ พร้อม merge ได้เลยครับ Approved!
 
 ---
 
