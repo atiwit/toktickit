@@ -9,7 +9,7 @@ import {
   Card,
   Badge,
 } from 'react-bootstrap';
-import { useRequester } from '../context/RequesterContext'; 
+import { useAuth } from '../context/AuthContext';
 
 interface Category {
   id: number;
@@ -61,7 +61,7 @@ const PRIORITY_BADGE_VARIANT: Record<string, string> = {
 };
 
 const CreateTicket: React.FC = () => {
-  const { selectedRequester } = useRequester();
+  const { user } = useAuth();
 
   // Reference data
   const [categories, setCategories] = useState<Category[]>([]);
@@ -93,8 +93,8 @@ const CreateTicket: React.FC = () => {
       setRefError(null);
       try {
         const [catRes, sysRes] = await Promise.all([
-          fetch('/api/categories'),
-          fetch('/api/related-systems'),
+          fetch('/api/categories', { credentials: 'include' }),
+          fetch('/api/related-systems', { credentials: 'include' }),
         ]);
         if (!catRes.ok || !sysRes.ok) throw new Error('Failed to load reference data');
         const [cats, systems] = await Promise.all([catRes.json(), sysRes.json()]);
@@ -170,8 +170,8 @@ const CreateTicket: React.FC = () => {
       const response = await fetch('/api/tickets', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({
-          requesterId: selectedRequester!.id,
           categoryId: Number(categoryId),
           relatedSystemId: Number(relatedSystemId),
           requestedPriority,

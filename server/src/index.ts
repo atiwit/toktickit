@@ -4,23 +4,47 @@ import fs from 'fs';
 dotenv.config({ path: path.resolve(__dirname, '../.env') });
 import express, { Request, Response } from 'express';
 import cors from 'cors';
+import cookieParser from 'cookie-parser';
 import multer from 'multer';
 import { v4 as uuidv4 } from 'uuid';
 import { PrismaClient } from './generated/prisma/client';
+import authRouter from './routes/auth';
+import { authenticateToken, passwordChangeGuard, requireRole } from './middleware/auth';
 
 const app = express();
-app.use(cors()); // เปิด CORS ให้ Frontend เรียกใช้งานได้
+
+// CORS — allow credentials for httpOnly cookie auth
+app.use(cors({
+  origin: process.env.CLIENT_URL || 'http://localhost:5173',
+  credentials: true,
+}));
 app.use(express.json());
+app.use(cookieParser());
+
 const prisma = new PrismaClient();
 
-// สร้าง Endpoint สำหรับ Health Check
+// ---------------------------------------------------------------------------
+// Auth routes (no auth middleware needed — they handle it internally)
+// ---------------------------------------------------------------------------
+app.use('/api/auth', authRouter);
+
+// ---------------------------------------------------------------------------
+// Health Check (public)
+// ---------------------------------------------------------------------------
 app.get('/api/health', (req: Request, res: Response) => {
-  // ส่ง HTTP 200 พร้อม JSON ตาม Acceptance criteria
-  res.status(200).json({ 
-    status: "ok", 
-    service: "Tok TickIT API" 
+  res.status(200).json({
+    status: "ok",
+    service: "Tok TickIT API"
   });
 });
+
+// ---------------------------------------------------------------------------
+// Protected routes — require authentication + password change guard
+// ---------------------------------------------------------------------------
+app.use('/api/categories', authenticateToken, passwordChangeGuard);
+app.use('/api/related-systems', authenticateToken, passwordChangeGuard);
+app.use('/api/tickets', authenticateToken, passwordChangeGuard);
+app.use('/api/attachments', authenticateToken, passwordChangeGuard);
 
 // Issue4 Category API
 app.get('/api/categories', async (req: Request, res: Response) => {
@@ -53,32 +77,16 @@ app.get('/api/related-systems', async (req: Request, res: Response) => {
   }
 });
 
-// Issue3 Requesters API
-app.get('/api/requesters', async (req: Request, res: Response) => {
-  try {
-    const requesters = await prisma.requesterUser.findMany({
-      where: { isActive: true },
-      orderBy: { id: 'asc' },
-      select: { id: true, name: true, email: true }
-    });
-    res.status(200).json(requesters);
-  } catch (error) {
-    console.error("Database error:", error);
-    res.status(500).json({ error: "Unable to fetch requesters" });
-  }
-});
-
 // Issue4 Create Ticket API — POST /api/tickets
-app.post('/api/tickets', async (req: Request, res: Response) => {
+app.post('/api/tickets', requireRole('REQUESTER'), async (req: Request, res: Response) => {
   try {
-    const { requesterId, categoryId, relatedSystemId, requestedPriority, summary, description } = req.body;
+    // Use authenticated user identity (BR-03 — ignore client-supplied requesterId)
+    const requesterId = req.user!.id;
+    const { categoryId, relatedSystemId, requestedPriority, summary, description } = req.body;
 
     // --- Validation ---
     const errors: Record<string, string> = {};
 
-    if (!requesterId || typeof requesterId !== 'number') {
-      errors.requesterId = 'requesterId is required and must be a number';
-    }
     if (!categoryId || typeof categoryId !== 'number') {
       errors.categoryId = 'categoryId is required and must be a number';
     }
@@ -104,9 +112,9 @@ app.post('/api/tickets', async (req: Request, res: Response) => {
       return;
     }
 
-    // ตรวจสอบว่า requester มีอยู่และ active 
-    const requester = await prisma.requesterUser.findFirst({
-      where: { id: requesterId, isActive: true },
+    // Verify requester is active
+    const requester = await prisma.user.findFirst({
+      where: { id: requesterId, isActive: true, role: 'REQUESTER' },
     });
     if (!requester) {
       res.status(400).json({ error: 'Validation failed', fields: { requesterId: 'Requester not found or inactive' } });
@@ -134,7 +142,7 @@ app.post('/api/tickets', async (req: Request, res: Response) => {
     }
     const ticketNumber = `${prefix}${String(sequence).padStart(4, '0')}`;
 
-    // บันทึก Ticket ลงฐานข้อมูล
+    // บันทึก Ticket ลงฐานข้อมูล — itPriority copies requestedPriority (BR-13)
     const ticket = await prisma.ticket.create({
       data: {
         ticketNumber,
@@ -142,6 +150,7 @@ app.post('/api/tickets', async (req: Request, res: Response) => {
         categoryId,
         relatedSystemId,
         requestedPriority,
+        itPriority: requestedPriority,
         summary: summary.trim(),
         description: description.trim(),
         status: 'NEW',
@@ -151,6 +160,7 @@ app.post('/api/tickets', async (req: Request, res: Response) => {
         ticketNumber: true,
         status: true,
         requestedPriority: true,
+        itPriority: true,
         summary: true,
         description: true,
         createdAt: true,
@@ -168,29 +178,19 @@ app.post('/api/tickets', async (req: Request, res: Response) => {
 });
 
 // Issue6 My Tickets API — GET /api/tickets
-app.get('/api/tickets', async (req: Request, res: Response) => {
+app.get('/api/tickets', requireRole('REQUESTER'), async (req: Request, res: Response) => {
   try {
-    const requesterIdHeader = getRequesterId(req);
-    if (!requesterIdHeader) {
-      res.status(401).json({ error: 'Missing requester context' });
-      return;
-    }
+    // Use authenticated identity (BR-03) — ignore query param requesterId
+    const requesterId = req.user!.id;
 
-    const { requesterId, search, status, category, requestedPriority, sort, page, limit } = req.query;
-
-    if (requesterId && parseInt(String(requesterId), 10) !== requesterIdHeader) {
-      res.status(403).json({ error: 'Cross-requester access forbidden' });
-      return;
-    }
-
-    const targetRequesterId = requesterId ? parseInt(String(requesterId), 10) : requesterIdHeader;
+    const { search, status, category, requestedPriority, sort, page, limit } = req.query;
 
     const pageNum = parseInt(String(page)) || 1;
     const limitNum = parseInt(String(limit)) || 10;
     const skip = (pageNum - 1) * limitNum;
 
     // Build filters
-    const where: any = { requesterId: targetRequesterId };
+    const where: any = { requesterId };
 
     if (status && status !== 'All Statuses' && status !== '') {
       where.status = String(status);
@@ -248,18 +248,14 @@ app.get('/api/tickets', async (req: Request, res: Response) => {
 });
 
 // Issue #7 — Ticket Detail API — GET /api/tickets/:id
-app.get('/api/tickets/:id', async (req: Request, res: Response) => {
+app.get('/api/tickets/:id', requireRole('REQUESTER'), async (req: Request, res: Response) => {
   const ticketId = Number(req.params.id);
   if (isNaN(ticketId) || !Number.isInteger(ticketId)) {
     res.status(400).json({ error: 'Invalid ticket id' });
     return;
   }
 
-  const requesterId = getRequesterId(req);
-  if (!requesterId) {
-    res.status(401).json({ error: 'Missing requester context' });
-    return;
-  }
+  const requesterId = req.user!.id;
 
   try {
     const ticket = await prisma.ticket.findUnique({
@@ -333,22 +329,8 @@ const upload = multer({
   },
 });
 
-const getRequesterId = (req: Request): number | null => {
-  const header = req.headers['x-requester-id'];
-  if (header) {
-    const id = Number(header);
-    if (!isNaN(id) && Number.isInteger(id)) return id;
-  }
-  const query = req.query.requesterId;
-  if (query) {
-    const id = Number(query);
-    if (!isNaN(id) && Number.isInteger(id)) return id;
-  }
-  return null;
-};
-
 // POST /api/tickets/:id/attachments — upload a file
-app.post('/api/tickets/:id/attachments', (req: Request, res: Response) => {
+app.post('/api/tickets/:id/attachments', requireRole('REQUESTER'), (req: Request, res: Response) => {
   const ticketId = Number(req.params.id);
   if (isNaN(ticketId) || !Number.isInteger(ticketId)) {
     res.status(400).json({ error: 'Invalid ticket id' });
@@ -376,12 +358,7 @@ app.post('/api/tickets/:id/attachments', (req: Request, res: Response) => {
     }
 
     try {
-      const requesterId = getRequesterId(req);
-      if (!requesterId) {
-        try { fs.unlinkSync(req.file.path); } catch { /* ignore */ }
-        res.status(401).json({ error: 'Missing requester context' });
-        return;
-      }
+      const requesterId = req.user!.id;
 
       // Verify ticket exists
       const ticket = await prisma.ticket.findUnique({ where: { id: ticketId } });
@@ -433,11 +410,7 @@ app.get('/api/tickets/:id/attachments', async (req: Request, res: Response) => {
     res.status(400).json({ error: 'Invalid ticket id' });
     return;
   }
-  const requesterId = getRequesterId(req);
-  if (!requesterId) {
-    res.status(401).json({ error: 'Missing requester context' });
-    return;
-  }
+  const requesterId = req.user!.id;
   try {
     const ticket = await prisma.ticket.findUnique({ where: { id: ticketId } });
     if (!ticket) {
@@ -477,11 +450,7 @@ app.get('/api/attachments/:id/download', async (req: Request, res: Response) => 
     res.status(400).json({ error: 'Invalid attachment id' });
     return;
   }
-  const requesterId = getRequesterId(req);
-  if (!requesterId) {
-    res.status(401).json({ error: 'Missing requester context' });
-    return;
-  }
+  const requesterId = req.user!.id;
   try {
     const attachment = await prisma.attachment.findUnique({ 
       where: { id },
@@ -514,7 +483,7 @@ app.get('/api/attachments/:id/download', async (req: Request, res: Response) => 
 });
 
 // DELETE /api/attachments/:id — soft-remove (reason required)
-app.delete('/api/attachments/:id', async (req: Request, res: Response) => {
+app.delete('/api/attachments/:id', requireRole('REQUESTER'), async (req: Request, res: Response) => {
   const id = Number(req.params.id);
   if (isNaN(id) || !Number.isInteger(id)) {
     res.status(400).json({ error: 'Invalid attachment id' });
@@ -531,11 +500,7 @@ app.delete('/api/attachments/:id', async (req: Request, res: Response) => {
     return;
   }
 
-  const requesterId = getRequesterId(req);
-  if (!requesterId) {
-    res.status(401).json({ error: 'Missing requester context' });
-    return;
-  }
+  const requesterId = req.user!.id;
 
   try {
     const attachment = await prisma.attachment.findUnique({ 

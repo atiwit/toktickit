@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { useRequester } from '../context/RequesterContext';
+import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 
 interface Category {
@@ -80,7 +80,7 @@ const buildPages = (current: number, total: number): (number | '…')[] => {
 // ── component ────────────────────────────────────────────────────────────────
 
 const MyTickets: React.FC = () => {
-  const { selectedRequester } = useRequester();
+  const { user } = useAuth();
   const navigate = useNavigate();
 
   const [tickets, setTickets] = useState<Ticket[]>([]);
@@ -99,7 +99,7 @@ const MyTickets: React.FC = () => {
 
   /* ── fetch categories once ── */
   useEffect(() => {
-    fetch('/api/categories')
+    fetch('/api/categories', { credentials: 'include' })
       .then(r => r.ok ? r.json() : [])
       .then(setCategories)
       .catch(() => {});
@@ -107,7 +107,7 @@ const MyTickets: React.FC = () => {
 
   /* ── fetch tickets ── */
   const fetchTickets = useCallback(async () => {
-    if (!selectedRequester) return;
+    if (!user) return;
     setLoading(true);
     setError(null);
     try {
@@ -119,7 +119,7 @@ const MyTickets: React.FC = () => {
       q.set('sort', sort);
 
       const res = await fetch(`/api/tickets?${q}`, {
-        headers: { 'X-Requester-Id': String(selectedRequester.id) },
+        credentials: 'include',
       });
       if (!res.ok) throw new Error();
       const json = await res.json();
@@ -132,9 +132,9 @@ const MyTickets: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [selectedRequester, search, category, reqPriority, curStatus, sort, page]);
+  }, [user, search, category, reqPriority, curStatus, sort, page]);
 
-  useEffect(() => { setPage(1); }, [selectedRequester]);
+  useEffect(() => { setPage(1); }, [user]);
   useEffect(() => { fetchTickets(); }, [fetchTickets]);
 
   const clearFilters = () => {
