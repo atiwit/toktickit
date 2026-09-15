@@ -5,13 +5,15 @@ import { PrismaClient, Priority, TicketStatus, Role } from '../src/generated/pri
 
 const prisma = new PrismaClient();
 
-const BCRYPT_COST = 10;
-const INITIAL_PASSWORD = 'P@ssw0rd1';
+// ---------------------------------------------------------------------------
+// Constants
+// ---------------------------------------------------------------------------
+const BCRYPT_ROUNDS = 10;
+const DEFAULT_PASSWORD = 'P@ssw0rd1'; // dev only — documented
 
 // ---------------------------------------------------------------------------
-// Seed Data
+// Reference Data
 // ---------------------------------------------------------------------------
-
 const CATEGORIES = [
   'Account & Access',
   'Hardware',
@@ -29,70 +31,41 @@ const RELATED_SYSTEMS = [
   'Corporate Laptop',
 ];
 
-// Users — all roles with initial password P@ssw0rd1 (documented for local dev only)
+// ---------------------------------------------------------------------------
+// Users  (dev credentials — all use password: P@ssw0rd1)
+// ---------------------------------------------------------------------------
 const USERS = [
-  // Requesters (≥4 active + 1 inactive)
-  { name: 'Alice Johnson',   email: 'alice.johnson@example.com',   role: Role.REQUESTER,      isActive: true,  mustChangePassword: false },
-  { name: 'Bob Smith',       email: 'bob.smith@example.com',       role: Role.REQUESTER,      isActive: true,  mustChangePassword: false },
-  { name: 'Carol Williams',  email: 'carol.williams@example.com',  role: Role.REQUESTER,      isActive: true,  mustChangePassword: false },
-  { name: 'David Lee',       email: 'david.lee@example.com',       role: Role.REQUESTER,      isActive: true,  mustChangePassword: false },
-  { name: 'Robert Taylor',   email: 'robert.taylor@example.com',   role: Role.REQUESTER,      isActive: false, mustChangePassword: true  },
-  // IT Staff (≥3 active + 1 inactive)
-  { name: 'Sarah Tech',      email: 'sarah.tech@example.com',      role: Role.IT_STAFF,       isActive: true,  mustChangePassword: false },
-  { name: 'Mike Support',    email: 'mike.support@example.com',    role: Role.IT_STAFF,       isActive: true,  mustChangePassword: false },
-  { name: 'Lisa Ops',        email: 'lisa.ops@example.com',        role: Role.IT_STAFF,       isActive: true,  mustChangePassword: false },
-  { name: 'Tom Inactive',    email: 'tom.inactive@example.com',    role: Role.IT_STAFF,       isActive: false, mustChangePassword: true  },
-  // Administrator (≥1 active)
-  { name: 'Admin User',      email: 'admin@example.com',           role: Role.ADMINISTRATOR,  isActive: true,  mustChangePassword: false },
-  // Test account for password change flow
-  { name: 'Must Change',     email: 'mustchange@example.com',      role: Role.REQUESTER,      isActive: true,  mustChangePassword: true  },
-];
+  // ≥1 Administrator
+  { name: 'Admin User',       email: 'admin@toktickit.dev',        role: Role.ADMINISTRATOR, isActive: true,  mustChangePassword: false },
 
-// ---------------------------------------------------------------------------
-// Sample tickets — created for each active requester
-// ---------------------------------------------------------------------------
-const SAMPLE_TICKETS = (
-  requesterId: number,
-  categoryId: number,
-  relatedSystemId: number,
-  index: number
-) => [
-  {
-    ticketNumber: `TKT-${String(requesterId).padStart(3, '0')}-${String(index * 2 + 1).padStart(4, '0')}`,
-    status: TicketStatus.NEW,
-    requestedPriority: Priority.MEDIUM,
-    itPriority: Priority.MEDIUM,
-    summary: `Cannot access ${RELATED_SYSTEMS[relatedSystemId - 1]} — issue #${index * 2 + 1}`,
-    description: `Detailed description for ticket ${index * 2 + 1}. This is a sample support request raised during Lab 3 seed.`,
-    requesterId,
-    categoryId,
-    relatedSystemId,
-  },
-  {
-    ticketNumber: `TKT-${String(requesterId).padStart(3, '0')}-${String(index * 2 + 2).padStart(4, '0')}`,
-    status: TicketStatus.NEW,
-    requestedPriority: Priority.HIGH,
-    itPriority: Priority.HIGH,
-    summary: `Urgent: ${RELATED_SYSTEMS[relatedSystemId - 1]} service degraded — issue #${index * 2 + 2}`,
-    description: `Detailed description for ticket ${index * 2 + 2}. Users report intermittent failures. Needs immediate investigation.`,
-    requesterId,
-    categoryId,
-    relatedSystemId,
-  },
+  // ≥3 active IT Staff + 1 inactive
+  { name: 'IT Staff Alpha',   email: 'it.alpha@toktickit.dev',     role: Role.IT_STAFF,      isActive: true,  mustChangePassword: false },
+  { name: 'IT Staff Beta',    email: 'it.beta@toktickit.dev',      role: Role.IT_STAFF,      isActive: true,  mustChangePassword: false },
+  { name: 'IT Staff Gamma',   email: 'it.gamma@toktickit.dev',     role: Role.IT_STAFF,      isActive: true,  mustChangePassword: false },
+  { name: 'IT Staff Inactive',email: 'it.inactive@toktickit.dev',  role: Role.IT_STAFF,      isActive: false, mustChangePassword: true  },
+
+  // ≥4 active Requesters + 1 inactive
+  { name: 'Alice Johnson',    email: 'alice.johnson@example.com',  role: Role.REQUESTER,     isActive: true,  mustChangePassword: false },
+  { name: 'Bob Smith',        email: 'bob.smith@example.com',      role: Role.REQUESTER,     isActive: true,  mustChangePassword: false },
+  { name: 'Carol Williams',   email: 'carol.williams@example.com', role: Role.REQUESTER,     isActive: true,  mustChangePassword: false },
+  { name: 'David Lee',        email: 'david.lee@example.com',      role: Role.REQUESTER,     isActive: true,  mustChangePassword: false },
+  { name: 'Robert Taylor',    email: 'robert.taylor@example.com',  role: Role.REQUESTER,     isActive: false, mustChangePassword: true  },
+  // Extra: user that must change password at next login
+  { name: 'New Hire Staff',   email: 'newhire@toktickit.dev',      role: Role.IT_STAFF,      isActive: true,  mustChangePassword: true  },
 ];
 
 // ---------------------------------------------------------------------------
 // Main
 // ---------------------------------------------------------------------------
 async function main() {
-  console.log('Start seeding...\n');
+  console.log('Start seeding (Lab 3)...\n');
 
-  // --- Hash initial password once ---
-  const passwordHash = await bcrypt.hash(INITIAL_PASSWORD, BCRYPT_COST);
-  console.log(`🔑 Initial password: ${INITIAL_PASSWORD} (for local dev only)\n`);
+  // --- Hash default password once ---
+  const passwordHash = await bcrypt.hash(DEFAULT_PASSWORD, BCRYPT_ROUNDS);
+  console.log(`Password hash generated for "${DEFAULT_PASSWORD}"`);
 
   // --- Categories ---
-  console.log('📂 Seeding categories...');
+  console.log('\nSeeding categories...');
   for (const name of CATEGORIES) {
     const cat = await prisma.category.upsert({
       where: { name },
@@ -103,7 +76,7 @@ async function main() {
   }
 
   // --- Related Systems ---
-  console.log('\n🖥️ Seeding related systems...');
+  console.log('\nSeeding related systems...');
   for (const name of RELATED_SYSTEMS) {
     const sys = await prisma.relatedSystem.upsert({
       where: { name },
@@ -114,12 +87,18 @@ async function main() {
   }
 
   // --- Users ---
-  console.log('\n👤 Seeding users...');
-  const upsertedUsers: { id: number; name: string; role: string; isActive: boolean }[] = [];
+  console.log('\nSeeding users...');
+  const upsertedUsers: { id: number; name: string; email: string; role: Role; isActive: boolean }[] = [];
   for (const u of USERS) {
     const user = await prisma.user.upsert({
       where: { email: u.email },
-      update: { name: u.name, role: u.role, isActive: u.isActive, mustChangePassword: u.mustChangePassword },
+      update: {
+        name: u.name,
+        role: u.role,
+        isActive: u.isActive,
+        mustChangePassword: u.mustChangePassword,
+        passwordHash,
+      },
       create: {
         name: u.name,
         email: u.email,
@@ -129,43 +108,123 @@ async function main() {
         mustChangePassword: u.mustChangePassword,
       },
     });
-    upsertedUsers.push({ id: user.id, name: user.name, role: user.role, isActive: user.isActive });
+    upsertedUsers.push({ id: user.id, name: user.name, email: user.email, role: user.role, isActive: user.isActive });
     const status = u.isActive ? '✓ Active  ' : '✗ Inactive';
-    const roleStr = u.role.padEnd(13);
-    console.log(`  ${status} [${roleStr}]: ${user.name} <${u.email}> (id=${user.id})`);
+    const mustChange = u.mustChangePassword ? ' [mustChange]' : '';
+    console.log(`  ${status}: [${u.role}] ${user.name} <${u.email}> (id=${user.id})${mustChange}`);
   }
 
-  // --- Sample Tickets (active requesters only) ---
-  console.log('\n🎫 Seeding sample tickets...');
-  const activeRequesters = upsertedUsers.filter(u => u.isActive && u.role === 'REQUESTER');
-
-  // Fetch IDs for category and system to use in tickets
+  // --- Sample Tickets ---
+  console.log('\nSeeding tickets...');
   const catIds = await prisma.category.findMany({ select: { id: true } });
   const sysIds = await prisma.relatedSystem.findMany({ select: { id: true } });
 
-  for (let i = 0; i < activeRequesters.length; i++) {
-    const requester = activeRequesters[i];
-    const categoryId = catIds[i % catIds.length].id;
-    const relatedSystemId = sysIds[i % sysIds.length].id;
-    const tickets = SAMPLE_TICKETS(requester.id, categoryId, relatedSystemId, i);
+  const requesters = upsertedUsers.filter(u => u.role === Role.REQUESTER && u.isActive);
+  const staffList  = upsertedUsers.filter(u => (u.role === Role.IT_STAFF || u.role === Role.ADMINISTRATOR) && u.isActive);
 
-    for (const ticket of tickets) {
-      const t = await prisma.ticket.upsert({
-        where: { ticketNumber: ticket.ticketNumber },
+  // Seed ticket data: varied statuses and priorities
+  const TICKET_TEMPLATES = [
+    { status: TicketStatus.NEW,                   priority: Priority.HIGH,     ownerIdx: null },
+    { status: TicketStatus.OPEN,                  priority: Priority.MEDIUM,   ownerIdx: 0    },
+    { status: TicketStatus.IN_PROGRESS,           priority: Priority.CRITICAL, ownerIdx: 1    },
+    { status: TicketStatus.WAITING_FOR_REQUESTER, priority: Priority.LOW,      ownerIdx: 0    },
+    { status: TicketStatus.RESOLVED,              priority: Priority.MEDIUM,   ownerIdx: 1    },
+    { status: TicketStatus.CLOSED,                priority: Priority.LOW,      ownerIdx: 0    },
+    { status: TicketStatus.REOPENED,              priority: Priority.HIGH,     ownerIdx: null },
+    { status: TicketStatus.CANCELLED,             priority: Priority.MEDIUM,   ownerIdx: null },
+  ];
+
+  const seededTickets: { id: number; ticketNumber: string }[] = [];
+
+  for (let ri = 0; ri < requesters.length; ri++) {
+    const requester = requesters[ri];
+    for (let ti = 0; ti < 2; ti++) {
+      const tmpl = TICKET_TEMPLATES[(ri * 2 + ti) % TICKET_TEMPLATES.length];
+      const categoryId     = catIds[(ri + ti) % catIds.length].id;
+      const relatedSystemId = sysIds[(ri + ti) % sysIds.length].id;
+      const ownerUser      = tmpl.ownerIdx !== null ? staffList[tmpl.ownerIdx % staffList.length] : null;
+
+      const ticketNumber = `TKT-SEED-${String(ri * 2 + ti + 1).padStart(4, '0')}`;
+      const ticket = await prisma.ticket.upsert({
+        where: { ticketNumber },
         update: {},
-        create: ticket,
+        create: {
+          ticketNumber,
+          requesterId: requester.id,
+          ownerId: ownerUser?.id ?? null,
+          categoryId,
+          relatedSystemId,
+          requestedPriority: tmpl.priority,
+          itPriority: tmpl.priority,
+          status: tmpl.status,
+          summary: `[${tmpl.status}] Issue with ${RELATED_SYSTEMS[(ri + ti) % RELATED_SYSTEMS.length]} — ticket ${ri * 2 + ti + 1}`,
+          description: `Detailed description for seeded ticket ${ri * 2 + ti + 1}. Requester: ${requester.name}. Status: ${tmpl.status}. Priority: ${tmpl.priority}.`,
+          requesterIndicatedResolved: tmpl.status === TicketStatus.IN_PROGRESS && ti === 0,
+        },
       });
-      console.log(`  ✓ Ticket ${t.ticketNumber} for ${requester.name}`);
+      seededTickets.push({ id: ticket.id, ticketNumber: ticket.ticketNumber });
+      const ownerLabel = ownerUser ? ownerUser.name : 'Unassigned';
+      console.log(`  ✓ ${ticket.ticketNumber} [${tmpl.status}] → Requester: ${requester.name}, Owner: ${ownerLabel}`);
+    }
+  }
+
+  // --- Sample Comments ---
+  console.log('\nSeeding comments...');
+  if (seededTickets.length > 0) {
+    const t1 = seededTickets[0];
+    const requester = requesters[0];
+    const staffMember = staffList[0];
+
+    // Check if comment already exists for this ticket
+    const existingComments = await prisma.comment.count({ where: { ticketId: t1.id } });
+    if (existingComments === 0) {
+      await prisma.comment.create({
+        data: {
+          ticketId: t1.id,
+          authorId: requester.id,
+          content: 'I still cannot access the system. The issue persists after trying the suggested steps.',
+        },
+      });
+      await prisma.comment.create({
+        data: {
+          ticketId: t1.id,
+          authorId: staffMember.id,
+          content: 'Thank you for the update. We are investigating the issue and will get back to you shortly.',
+        },
+      });
+      console.log(`  ✓ Added 2 public comments to ${t1.ticketNumber}`);
+    } else {
+      console.log(`  ↩ Comments already exist for ${t1.ticketNumber}`);
+    }
+  }
+
+  // --- Sample Internal Notes ---
+  console.log('\nSeeding internal notes...');
+  if (seededTickets.length > 1) {
+    const t2 = seededTickets[1];
+    const staffMember = staffList[0];
+
+    const existingNotes = await prisma.internalNote.count({ where: { ticketId: t2.id } });
+    if (existingNotes === 0) {
+      await prisma.internalNote.create({
+        data: {
+          ticketId: t2.id,
+          authorId: staffMember.id,
+          content: '[Internal] Checked the server logs — root cause is a misconfigured LDAP binding. Escalating to network team.',
+        },
+      });
+      console.log(`  ✓ Added 1 internal note to ${t2.ticketNumber}`);
+    } else {
+      console.log(`  ↩ Notes already exist for ${t2.ticketNumber}`);
     }
   }
 
   console.log('\n✅ Seeding complete!');
-  console.log('\n📋 Credentials for local development:');
-  console.log(`   All users: password = ${INITIAL_PASSWORD}`);
-  console.log(`   Admin:     admin@example.com`);
-  console.log(`   IT Staff:  sarah.tech@example.com, mike.support@example.com, lisa.ops@example.com`);
-  console.log(`   Requester: alice.johnson@example.com, bob.smith@example.com`);
-  console.log(`   Must Change Password: mustchange@example.com`);
+  console.log('\n📋 Dev credentials (all use password: P@ssw0rd1)');
+  console.log('   admin@toktickit.dev         — Administrator');
+  console.log('   it.alpha@toktickit.dev      — IT Staff');
+  console.log('   alice.johnson@example.com   — Requester');
+  console.log('   newhire@toktickit.dev       — IT Staff (mustChangePassword=true)');
 }
 
 main()

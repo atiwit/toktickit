@@ -1,46 +1,49 @@
-
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
-import Login from './pages/Login';
-import ChangePassword from './pages/ChangePassword';
-import CreateTicket from './pages/CreateTicket';
-import ProtectedRoute from './components/ProtectedRoute';
 import AppShell from './components/AppShell';
+import ProtectedRoute from './components/ProtectedRoute';
+import LoginPage from './pages/LoginPage';
+import ChangePasswordPage from './pages/ChangePasswordPage';
+import MyTickets from './pages/MyTickets';
+import CreateTicket from './pages/CreateTicket';
+import TicketDetailPage from './pages/TicketDetail';
+import StaffTicketQueue from './pages/StaffTicketQueue';
+import StaffTicketDetail from './pages/StaffTicketDetail';
+import UserManagement from './pages/UserManagement';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import './index.css';
-
-import MyTickets from './pages/MyTickets';
-import TicketDetailPage from './pages/TicketDetail';
 
 function App() {
   return (
     <AuthProvider>
       <BrowserRouter>
         <Routes>
-          {/* Auth pages (no AppShell) */}
-          <Route path="/login" element={<Login />} />
-          <Route path="/change-password" element={<ChangePassword />} />
+          {/* Public routes — no shell */}
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/change-password" element={<ChangePasswordPage />} />
 
-          {/* Authenticated routes with AppShell */}
+          {/* Protected routes — inside AppShell */}
           <Route element={<AppShell />}>
             {/* Requester routes */}
-            <Route element={<ProtectedRoute roles={['REQUESTER']} />}>
+            <Route element={<ProtectedRoute allowedRoles={['REQUESTER']} />}>
               <Route path="/" element={<MyTickets />} />
               <Route path="/create-ticket" element={<CreateTicket />} />
               <Route path="/tickets/:id" element={<TicketDetailPage />} />
             </Route>
 
-            {/* IT Staff routes (placeholder) */}
-            <Route element={<ProtectedRoute roles={['IT_STAFF']} />}>
-              <Route path="/staff/tickets" element={<div style={{ padding: '2rem', textAlign: 'center', color: '#6B7280' }}>Ticket Queue — Coming Soon</div>} />
+            {/* IT Staff routes */}
+            <Route element={<ProtectedRoute allowedRoles={['IT_STAFF']} />}>
+              <Route path="/staff/tickets" element={<StaffTicketQueue />} />
+              <Route path="/staff/tickets/:id" element={<StaffTicketDetail />} />
             </Route>
 
-            {/* Administrator routes (placeholder) */}
-            <Route element={<ProtectedRoute roles={['ADMINISTRATOR']} />}>
-              <Route path="/admin/users" element={<div style={{ padding: '2rem', textAlign: 'center', color: '#6B7280' }}>User Management — Coming Soon</div>} />
+            {/* Administrator routes */}
+            <Route element={<ProtectedRoute allowedRoles={['ADMINISTRATOR']} />}>
+              <Route path="/admin/users" element={<UserManagement />} />
             </Route>
 
-            <Route path="*" element={<Navigate to="/" replace />} />
+            {/* Fallback — redirect to login */}
+            <Route path="*" element={<Navigate to="/login" replace />} />
           </Route>
         </Routes>
       </BrowserRouter>
