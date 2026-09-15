@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { useRequester } from '../context/RequesterContext';
+import { useAuth } from '../context/AuthContext';
 import AttachmentSection from './AttachmentSection';
 
 // ── Types ────────────────────────────────────────────────────────────────────
@@ -68,7 +68,7 @@ const FieldRow: React.FC<{ label: string; children: React.ReactNode }> = ({ labe
 const TicketDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { selectedRequester } = useRequester();
+  const { user } = useAuth();
 
   const [ticket, setTicket] = useState<TicketDetail | null>(null);
   const [loading, setLoading] = useState(true);
@@ -76,7 +76,7 @@ const TicketDetailPage: React.FC = () => {
   const [forbidden, setForbidden] = useState(false);
 
   useEffect(() => {
-    if (!selectedRequester || !id) return;
+    if (!user || !id) return;
 
     const fetchTicket = async () => {
       setLoading(true);
@@ -84,7 +84,7 @@ const TicketDetailPage: React.FC = () => {
       setForbidden(false);
       try {
         const res = await fetch(`/api/tickets/${id}`, {
-          headers: { 'X-Requester-Id': String(selectedRequester.id) },
+          credentials: 'include',
         });
         if (res.status === 403) {
           setForbidden(true);
@@ -105,7 +105,7 @@ const TicketDetailPage: React.FC = () => {
     };
 
     fetchTicket();
-  }, [selectedRequester, id]);
+  }, [user, id]);
 
   // ── styles ────────────────────────────────────────────────────────────────
   const pageWrap: React.CSSProperties = {
