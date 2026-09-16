@@ -13,7 +13,7 @@ ALTER TYPE "TicketStatus" ADD VALUE IF NOT EXISTS 'CANCELLED';
 -- CreateTable: User (replaces RequesterUser)
 CREATE TABLE "User" (
     "id" SERIAL NOT NULL,
-    "name" TEXT NOT NULL,
+    "name" VARCHAR(200) NOT NULL,
     "email" TEXT NOT NULL,
     "passwordHash" TEXT NOT NULL,
     "role" "Role" NOT NULL DEFAULT 'REQUESTER',
@@ -27,6 +27,8 @@ CREATE TABLE "User" (
 
 -- CreateIndex
 CREATE UNIQUE INDEX "User_email_key" ON "User"("email");
+CREATE INDEX "User_email_idx" ON "User"("email");
+CREATE INDEX "User_role_idx" ON "User"("role");
 
 -- MigrateData: Copy RequesterUser records into User with role=REQUESTER
 -- Initial password hash for 'P@ssw0rd1' with bcrypt cost 10
@@ -43,7 +45,7 @@ SELECT setval(pg_get_serial_sequence('"User"', 'id'), COALESCE((SELECT MAX("id")
 -- AlterTable: Ticket — add new columns
 ALTER TABLE "Ticket" ADD COLUMN "itPriority" "Priority" NOT NULL DEFAULT 'MEDIUM';
 ALTER TABLE "Ticket" ADD COLUMN "ownerId" INTEGER;
-ALTER TABLE "Ticket" ADD COLUMN "requesterResolved" BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE "Ticket" ADD COLUMN "requesterIndicatedResolved" BOOLEAN NOT NULL DEFAULT false;
 
 -- Set itPriority = requestedPriority for existing tickets (BR-13)
 UPDATE "Ticket" SET "itPriority" = "requestedPriority";
