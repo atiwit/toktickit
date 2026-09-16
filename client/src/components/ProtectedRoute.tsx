@@ -1,50 +1,32 @@
 import React from 'react';
 import { Navigate, Outlet } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
+import { useAuth, type UserRole } from '../context/AuthContext';
+import ForbiddenPage from '../pages/ForbiddenPage';
 
 interface ProtectedRouteProps {
-  roles?: string[];
+  /** Roles allowed to access this route. If omitted, any authenticated user is allowed. */
+  allowedRoles?: UserRole[];
 }
 
-const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ roles }) => {
+const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ allowedRoles }) => {
   const { user, loading } = useAuth();
 
-  // Show nothing while checking session
-  if (loading) {
-    return (
-      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '60vh' }}>
-        <div style={{ color: 'var(--color-text-muted, #6B7280)' }}>Loading...</div>
-      </div>
-    );
-  }
+  // Show nothing while session is being restored
+  if (loading) return null;
 
-  // Not authenticated → redirect to login
+  // Unauthenticated → redirect to login
   if (!user) {
     return <Navigate to="/login" replace />;
   }
 
-  // Must change password → redirect to change password
+  // mustChangePassword → redirect to change-password screen (only allow that route)
   if (user.mustChangePassword) {
     return <Navigate to="/change-password" replace />;
   }
 
-  // Role check
-  if (roles && roles.length > 0 && !roles.includes(user.role)) {
-    return (
-      <div style={{
-        display: 'flex',
-        justifyContent: 'center',
-        alignItems: 'center',
-        minHeight: '60vh',
-        flexDirection: 'column',
-        gap: '1rem',
-      }}>
-        <h2 style={{ color: 'var(--color-danger, #DC2626)', margin: 0 }}>Access Denied</h2>
-        <p style={{ color: 'var(--color-text-muted, #6B7280)' }}>
-          You do not have permission to access this page.
-        </p>
-      </div>
-    );
+  // Role check — show Forbidden (not redirect) for direct URL access (FR-06, ui-spec §2.3)
+  if (allowedRoles && !allowedRoles.includes(user.role)) {
+    return <ForbiddenPage />;
   }
 
   return <Outlet />;

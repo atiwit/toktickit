@@ -1,5 +1,4 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { useAuth } from '../context/AuthContext';
 import {
   Alert,
   Badge,
@@ -39,7 +38,6 @@ const formatBytes = (bytes: number): string => {
 };
 
 const AttachmentSection: React.FC<AttachmentSectionProps> = ({ ticketId }) => {
-  const { user } = useAuth();
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [loading, setLoading] = useState(true);
   const [listError, setListError] = useState<string | null>(null);
@@ -276,7 +274,7 @@ const AttachmentSection: React.FC<AttachmentSectionProps> = ({ ticketId }) => {
                       id={`download-btn-${att.id}`}
                       variant="outline-primary"
                       size="sm"
-                      href={`/api/attachments/${att.id}/download${selectedRequester ? `?requesterId=${selectedRequester.id}` : ''}`}
+                      href={`/api/attachments/${att.id}/download`}
                       as="a"
                       download
                     >

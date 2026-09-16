@@ -1,23 +1,29 @@
-import React, { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
 
-const API_BASE = 'http://localhost:3001';
+// ---------------------------------------------------------------------------
+// Types
+// ---------------------------------------------------------------------------
+
+export type UserRole = 'REQUESTER' | 'IT_STAFF' | 'ADMINISTRATOR';
 
 export interface AuthUser {
   id: number;
   name: string;
   email: string;
-  role: 'REQUESTER' | 'IT_STAFF' | 'ADMINISTRATOR';
+  role: UserRole;
   mustChangePassword: boolean;
 }
 
 interface AuthContextType {
   user: AuthUser | null;
   loading: boolean;
-  login: (email: string, password: string) => Promise<{ success: boolean; error?: string; user?: AuthUser }>;
+  setUser: (user: AuthUser | null) => void;
   logout: () => Promise<void>;
-  changePassword: (newPassword: string, confirmPassword: string) => Promise<{ success: boolean; error?: string }>;
-  refreshUser: () => Promise<void>;
 }
+
+// ---------------------------------------------------------------------------
+// Context
+// ---------------------------------------------------------------------------
 
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
@@ -25,96 +31,49 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // On mount, try to restore session from cookie via /api/auth/me
-  const refreshUser = useCallback(async () => {
-    try {
-      const res = await fetch(`${API_BASE}/api/auth/me`, {
-        credentials: 'include',
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setUser(data.user);
-      } else {
-        setUser(null);
-      }
-    } catch {
-      setUser(null);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
+  // Restore session on mount by calling GET /api/auth/me
   useEffect(() => {
-    refreshUser();
-  }, [refreshUser]);
-
-  const login = async (email: string, password: string) => {
-    try {
-      const res = await fetch(`${API_BASE}/api/auth/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ email, password }),
-      });
-
-      const data = await res.json();
-
-      if (res.ok) {
-        setUser(data.user);
-        return { success: true, user: data.user as AuthUser };
-      }
-
-      return { success: false, error: data.error || 'Login failed' };
-    } catch {
-      return { success: false, error: 'Unable to connect. Please try again later.' };
-    }
-  };
+    fetch('/api/auth/me', { credentials: 'include' })
+      .then(res => (res.ok ? res.json() : null))
+      .then(data => {
+        if (data?.user) setUser(data.user);
+      })
+      .catch(() => {
+        /* no session — stay null */
+      })
+      .finally(() => setLoading(false));
+  }, []);
 
   const logout = async () => {
     try {
-      await fetch(`${API_BASE}/api/auth/logout`, {
-        method: 'POST',
-        credentials: 'include',
-      });
+      await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' });
     } catch {
-      // Ignore network errors — clear local state anyway
+      /* ignore network errors on logout */
     }
     setUser(null);
   };
 
-  const changePassword = async (newPassword: string, confirmPassword: string) => {
-    try {
-      const res = await fetch(`${API_BASE}/api/auth/change-password`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ newPassword, confirmPassword }),
-      });
-
-      const data = await res.json();
-
-      if (res.ok) {
-        setUser(data.user);
-        return { success: true };
-      }
-
-      return { success: false, error: data.error || 'Password change failed' };
-    } catch {
-      return { success: false, error: 'Unable to connect. Please try again later.' };
-    }
-  };
-
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout, changePassword, refreshUser }}>
+    <AuthContext.Provider value={{ user, loading, setUser, logout }}>
       {children}
     </AuthContext.Provider>
   );
 };
 
-export const useAuth = () => {
+export const useAuth = (): AuthContextType => {
   const context = useContext(AuthContext);
   if (context === undefined) {
     throw new Error('useAuth must be used within an AuthProvider');
   }
   return context;
+};
+
+/** Role display label */
+export const roleLabel = (role: UserRole): string => {
+  const map: Record<UserRole, string> = {
+    REQUESTER: 'Requester',
+    IT_STAFF: 'IT Staff',
+    ADMINISTRATOR: 'Administrator',
+  };
+  return map[role] ?? role;
 };

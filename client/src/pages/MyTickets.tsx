@@ -52,12 +52,14 @@ const PriorityBadge: React.FC<{ value: string }> = ({ value }) => {
 
 const StatusBadge: React.FC<{ value: string }> = ({ value }) => {
   const map: Record<string, { label: string; bg: string; color: string; border: string }> = {
-    NEW:         { label: 'Open',        bg: '#EFF6FF', color: '#1D4ED8', border: '#BFDBFE' },
-    OPEN:        { label: 'Open',        bg: '#EFF6FF', color: '#1D4ED8', border: '#BFDBFE' },
-    IN_PROGRESS: { label: 'In Progress', bg: '#ECFDF5', color: '#065F46', border: '#6EE7B7' },
-    RESOLVED:    { label: 'Resolved',    bg: '#ECFDF5', color: '#065F46', border: '#6EE7B7' },
-    CLOSED:      { label: 'Closed',      bg: '#F3F4F6', color: '#374151', border: '#D1D5DB' },
-    PENDING:     { label: 'Pending',     bg: '#FFF7ED', color: '#C2410C', border: '#FED7AA' },
+    NEW:                   { label: 'New',                  bg: '#EFF6FF', color: '#1D4ED8', border: '#BFDBFE' },
+    OPEN:                  { label: 'Open',                 bg: '#FEF3C7', color: '#92400E', border: '#FCD34D' },
+    IN_PROGRESS:           { label: 'In Progress',          bg: '#F5F3FF', color: '#5B21B6', border: '#C4B5FD' },
+    WAITING_FOR_REQUESTER: { label: 'Waiting',              bg: '#FFF7ED', color: '#C2410C', border: '#FED7AA' },
+    RESOLVED:              { label: 'Resolved',             bg: '#ECFDF5', color: '#065F46', border: '#6EE7B7' },
+    CLOSED:                { label: 'Closed',               bg: '#F3F4F6', color: '#374151', border: '#D1D5DB' },
+    REOPENED:              { label: 'Reopened',             bg: '#FEF2F2', color: '#991B1B', border: '#FECACA' },
+    CANCELLED:             { label: 'Cancelled',            bg: '#F9FAFB', color: '#6B7280', border: '#E5E7EB' },
   };
   const s = map[value] ?? { label: value, bg: '#F3F4F6', color: '#374151', border: '#D1D5DB' };
   return (
@@ -99,7 +101,7 @@ const MyTickets: React.FC = () => {
 
   /* ── fetch categories once ── */
   useEffect(() => {
-    fetch('/api/categories', { credentials: 'include' })
+    fetch('/api/categories')
       .then(r => r.ok ? r.json() : [])
       .then(setCategories)
       .catch(() => {});
@@ -119,7 +121,7 @@ const MyTickets: React.FC = () => {
       q.set('sort', sort);
 
       const res = await fetch(`/api/tickets?${q}`, {
-        credentials: 'include',
+        credentials: 'include',  // send JWT cookie (BR-03, FR-09)
       });
       if (!res.ok) throw new Error();
       const json = await res.json();
@@ -300,8 +302,11 @@ const MyTickets: React.FC = () => {
             <option value="NEW">New</option>
             <option value="OPEN">Open</option>
             <option value="IN_PROGRESS">In Progress</option>
+            <option value="WAITING_FOR_REQUESTER">Waiting for Requester</option>
             <option value="RESOLVED">Resolved</option>
             <option value="CLOSED">Closed</option>
+            <option value="REOPENED">Reopened</option>
+            <option value="CANCELLED">Cancelled</option>
           </select>
         </div>
       </div>
