@@ -3,7 +3,7 @@ import request from 'supertest';
 import jwt from 'jsonwebtoken';
 
 // mockupdata
-vi.mock('../../src/generated/prisma/client', () => {
+const { mockPrismaInstance, inlineTickets } = vi.hoisted(() => {
   const inlineTickets = [
     {
       id: 1,
@@ -82,8 +82,12 @@ vi.mock('../../src/generated/prisma/client', () => {
     internalNote: { findMany: vi.fn().mockResolvedValue([]) },
   };
 
+  return { mockPrismaInstance: mockInstance, inlineTickets };
+});
+
+vi.mock('../../src/generated/prisma/client', () => {
   return {
-    PrismaClient: vi.fn().mockImplementation(() => mockInstance),
+    PrismaClient: vi.fn().mockImplementation(() => mockPrismaInstance),
     Role: {
       REQUESTER: 'REQUESTER',
       IT_STAFF: 'IT_STAFF',
@@ -429,3 +433,82 @@ describe('QUEUE-09 — GET /api/staff/tickets invalid pageSize falls back to 10'
     expect(res.body.pagination.pageSize).toBe(10);
   });
 });
+
+// ---------------------------------------------------------------------------
+// QUEUE-10: Empty results & page boundary handling — AC-07
+// ---------------------------------------------------------------------------
+describe('QUEUE-10 — GET /api/staff/tickets empty results and page boundary handling', () => {
+  it('returns empty tickets array and totalCount: 0 when no tickets match', async () => {
+    mockPrismaInstance.ticket.findMany.mockResolvedValueOnce([]);
+    mockPrismaInstance.ticket.count.mockResolvedValueOnce(0);
+
+    const res = await request(app)
+      .get('/api/staff/tickets?search=nonexistent')
+      .set('Cookie', staffCookie());
+
+    expect(res.status).toBe(200);
+    expect(res.body.tickets).toEqual([]);
+    expect(res.body.pagination.totalCount).toBe(0);
+    expect(res.body.pagination.totalPages).toBe(0);
+    expect(res.body.pagination.currentPage).toBe(1);
+  });
+
+  it('page=0 falls back to page=1', async () => {
+    const res = await request(app)
+      .get('/api/staff/tickets?page=0')
+      .set('Cookie', staffCookie());
+
+    expect(res.status).toBe(200);
+    expect(res.body.pagination.currentPage).toBe(1);
+  });
+
+  it('page=-5 (negative number) falls back to page=1', async () => {
+    const res = await request(app)
+      .get('/api/staff/tickets?page=-5')
+      .set('Cookie', staffCookie());
+
+    expect(res.status).toBe(200);
+    expect(res.body.pagination.currentPage).toBe(1);
+  });
+
+  it('page=xyz (non-numeric) falls back to page=1', async () => {
+    const res = await request(app)
+      .get('/api/staff/tickets?page=xyz')
+      .set('Cookie', staffCookie());
+
+    expect(res.status).toBe(200);
+    expect(res.body.pagination.currentPage).toBe(1);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// QUEUE-11: Database / Server error handling — AC-07
+// ---------------------------------------------------------------------------
+describe('QUEUE-11 — GET /api/staff/tickets server error (500) handling', () => {
+  it('returns 500 when database count query rejects', async () => {
+    mockPrismaInstance.ticket.count.mockRejectedValueOnce(new Error('Prisma database connection lost'));
+
+    const res = await request(app)
+      .get('/api/staff/tickets')
+      .set('Cookie', staffCookie());
+
+    expect(res.status).toBe(500);
+    expect(res.body).toHaveProperty('error');
+    expect(res.body.error.code).toBe('SERVER_ERROR');
+    expect(res.body.error.message).toBe('Unable to fetch ticket queue');
+  });
+
+  it('returns 500 when database findMany query rejects', async () => {
+    mockPrismaInstance.ticket.findMany.mockRejectedValueOnce(new Error('Prisma query timeout'));
+
+    const res = await request(app)
+      .get('/api/staff/tickets')
+      .set('Cookie', staffCookie());
+
+    expect(res.status).toBe(500);
+    expect(res.body).toHaveProperty('error');
+    expect(res.body.error.code).toBe('SERVER_ERROR');
+    expect(res.body.error.message).toBe('Unable to fetch ticket queue');
+  });
+});
+

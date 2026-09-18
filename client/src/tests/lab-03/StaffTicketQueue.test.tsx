@@ -1,6 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor, fireEvent } from '@testing-library/react';
-import React from 'react';
+import { render, screen, waitFor, fireEvent, within } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
 import StaffTicketQueue from '../../pages/StaffTicketQueue';
 
@@ -317,3 +316,297 @@ describe('UI-09 — StaffTicketQueue search filters the list', () => {
     expect(mockNavigate).toHaveBeenCalledWith('/staff/tickets/1');
   });
 });
+
+// ---------------------------------------------------------------------------
+// UI-10: Pagination retains search and filter states
+// ---------------------------------------------------------------------------
+describe('UI-10 — Pagination retains search and filter states', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('navigating to next page preserves search and filter parameters in API request and UI inputs', async () => {
+    const multiPagePagination = {
+      currentPage: 1,
+      pageSize: 10,
+      totalCount: 25,
+      totalPages: 3,
+    };
+    mockFetchSuccess(mockTickets, multiPagePagination);
+    renderQueue();
+
+    await waitFor(() => {
+      expect(screen.getAllByText('TKT-20260913-0001')[0]).toBeInTheDocument();
+    });
+
+    // Enter search and filters
+    const searchInput = screen.getByPlaceholderText(/ticket number or summary/i);
+    const statusSelect = document.getElementById('queue-status-filter') as HTMLSelectElement;
+    const prioritySelect = document.getElementById('queue-priority-filter') as HTMLSelectElement;
+
+    fireEvent.change(searchInput, { target: { value: 'Printer' } });
+    fireEvent.change(statusSelect, { target: { value: 'IN_PROGRESS' } });
+    fireEvent.change(prioritySelect, { target: { value: 'CRITICAL' } });
+
+    await waitFor(() => {
+      const calls = (global.fetch as ReturnType<typeof vi.fn>).mock.calls;
+      const lastCallUrl = calls[calls.length - 1][0] as string;
+      expect(lastCallUrl).toContain('search=Printer');
+      expect(lastCallUrl).toContain('status=IN_PROGRESS');
+      expect(lastCallUrl).toContain('itPriority=CRITICAL');
+    });
+
+    // Mock next fetch response for page 2
+    mockFetchSuccess(mockTickets, { ...multiPagePagination, currentPage: 2 });
+
+    // Click Next button
+    const nextBtn = screen.getByRole('button', { name: /next/i });
+    expect(nextBtn).not.toBeDisabled();
+    fireEvent.click(nextBtn);
+
+    // Verify fetch called with page=2 and preserving all filters
+    await waitFor(() => {
+      const calls = (global.fetch as ReturnType<typeof vi.fn>).mock.calls;
+      const lastCallUrl = calls[calls.length - 1][0] as string;
+      expect(lastCallUrl).toContain('page=2');
+      expect(lastCallUrl).toContain('search=Printer');
+      expect(lastCallUrl).toContain('status=IN_PROGRESS');
+      expect(lastCallUrl).toContain('itPriority=CRITICAL');
+    });
+
+    // Verify UI inputs still retain their values
+    expect(searchInput).toHaveValue('Printer');
+    expect(statusSelect).toHaveValue('IN_PROGRESS');
+    expect(prioritySelect).toHaveValue('CRITICAL');
+  });
+
+  it('clicking numbered page button preserves filters', async () => {
+    const multiPagePagination = {
+      currentPage: 1,
+      pageSize: 10,
+      totalCount: 25,
+      totalPages: 3,
+    };
+    mockFetchSuccess(mockTickets, multiPagePagination);
+    renderQueue();
+
+    await waitFor(() => {
+      expect(screen.getAllByText('TKT-20260913-0001')[0]).toBeInTheDocument();
+    });
+
+    const statusSelect = document.getElementById('queue-status-filter') as HTMLSelectElement;
+    fireEvent.change(statusSelect, { target: { value: 'OPEN' } });
+
+    await waitFor(() => {
+      expect(global.fetch).toHaveBeenCalledWith(expect.stringContaining('status=OPEN'), expect.any(Object));
+    });
+
+    mockFetchSuccess(mockTickets, { ...multiPagePagination, currentPage: 2 });
+
+    // Click page number "2"
+    const page2Btn = screen.getByRole('button', { name: '2' });
+    fireEvent.click(page2Btn);
+
+    await waitFor(() => {
+      const calls = (global.fetch as ReturnType<typeof vi.fn>).mock.calls;
+      const lastCallUrl = calls[calls.length - 1][0] as string;
+      expect(lastCallUrl).toContain('page=2');
+      expect(lastCallUrl).toContain('status=OPEN');
+    });
+  });
+
+  it('changing search or filter while on page > 1 resets page back to 1', async () => {
+    const multiPagePagination = {
+      currentPage: 2,
+      pageSize: 10,
+      totalCount: 25,
+      totalPages: 3,
+    };
+    mockFetchSuccess(mockTickets, multiPagePagination);
+    renderQueue();
+
+    await waitFor(() => {
+      expect(screen.getAllByText('TKT-20260913-0001')[0]).toBeInTheDocument();
+    });
+
+    // Navigate to page 2 first
+    const page2Btn = screen.getByRole('button', { name: '2' });
+    fireEvent.click(page2Btn);
+
+    await waitFor(() => {
+      const calls = (global.fetch as ReturnType<typeof vi.fn>).mock.calls;
+      const lastCallUrl = calls[calls.length - 1][0] as string;
+      expect(lastCallUrl).toContain('page=2');
+    });
+
+    // Now user types a new search query while on page 2
+    const searchInput = screen.getByPlaceholderText(/ticket number or summary/i);
+    fireEvent.change(searchInput, { target: { value: 'Network' } });
+
+    await waitFor(() => {
+      const calls = (global.fetch as ReturnType<typeof vi.fn>).mock.calls;
+      const lastCallUrl = calls[calls.length - 1][0] as string;
+      expect(lastCallUrl).toContain('page=1');
+      expect(lastCallUrl).toContain('search=Network');
+    });
+  });
+
+  it('boundary conditions: Prev button is disabled on first page, Next is disabled on last page', async () => {
+    mockFetchSuccess(mockTickets, {
+      currentPage: 1,
+      pageSize: 10,
+      totalCount: 20,
+      totalPages: 2,
+    });
+    renderQueue();
+
+    await waitFor(() => {
+      expect(screen.getAllByText('TKT-20260913-0001')[0]).toBeInTheDocument();
+    });
+
+    const prevBtn = screen.getByRole('button', { name: /prev/i });
+    const nextBtn = screen.getByRole('button', { name: /next/i });
+
+    // Page 1: Prev disabled, Next enabled
+    expect(prevBtn).toBeDisabled();
+    expect(nextBtn).toBeEnabled();
+
+    // Move to page 2 (last page)
+    mockFetchSuccess(mockTickets, {
+      currentPage: 2,
+      pageSize: 10,
+      totalCount: 20,
+      totalPages: 2,
+    });
+    fireEvent.click(nextBtn);
+
+    await waitFor(() => {
+      expect(prevBtn).toBeEnabled();
+      expect(nextBtn).toBeDisabled();
+    });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// UI-11: Responsive behavior & viewport adaptation
+// ---------------------------------------------------------------------------
+describe('UI-11 — Responsive behavior & viewport adaptation', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockFetchSuccess();
+  });
+
+  it('desktop view renders the desktop table container and full column headers', async () => {
+    renderQueue();
+
+    await waitFor(() => {
+      expect(screen.getAllByText('TKT-20260913-0001')[0]).toBeInTheDocument();
+    });
+
+    const desktopContainer = document.getElementById('queue-table-desktop');
+    expect(desktopContainer).toBeInTheDocument();
+
+    // Check all desktop table headers within the desktop container
+    const expectedHeaders = [
+      'Ticket #', 'Created', 'Summary', 'Category',
+      'Req. Priority', 'IT Priority', 'Status', 'Owner',
+      'Last Updated', 'Action',
+    ];
+    for (const h of expectedHeaders) {
+      expect(within(desktopContainer!).getByText(new RegExp(h, 'i'))).toBeInTheDocument();
+    }
+  });
+
+  it('mobile view renders mobile card stack with ticket details', async () => {
+    renderQueue();
+
+    await waitFor(() => {
+      expect(screen.getAllByText('TKT-20260913-0001')[0]).toBeInTheDocument();
+    });
+
+    const mobileContainer = document.getElementById('queue-list-mobile');
+    expect(mobileContainer).toBeInTheDocument();
+
+    // Ticket info rendered inside mobile cards
+    expect(mobileContainer).toHaveTextContent('TKT-20260913-0001');
+    expect(mobileContainer).toHaveTextContent('Printer not working on floor 3');
+    expect(mobileContainer).toHaveTextContent('IT Staff A');
+    expect(mobileContainer).toHaveTextContent('TKT-20260913-0002');
+    expect(mobileContainer).toHaveTextContent('Unassigned');
+  });
+
+  it('clicking mobile ticket card triggers navigation to detail page', async () => {
+    renderQueue();
+
+    await waitFor(() => {
+      expect(screen.getAllByText('TKT-20260913-0001')[0]).toBeInTheDocument();
+    });
+
+    const mobileContainer = document.getElementById('queue-list-mobile');
+    const firstCard = mobileContainer?.firstElementChild as HTMLElement;
+    expect(firstCard).toBeInTheDocument();
+
+    fireEvent.click(firstCard);
+    expect(mockNavigate).toHaveBeenCalledWith('/staff/tickets/1');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// UI-12: Advanced API Error handling & Recovery
+// ---------------------------------------------------------------------------
+describe('UI-12 — Advanced API Error handling & Recovery', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('network exception (fetch reject) displays error banner without crashing', async () => {
+    global.fetch = vi.fn().mockRejectedValue(new Error('Network connection refused'));
+    renderQueue();
+
+    await waitFor(() => {
+      expect(
+        screen.getByText(/unable to load ticket queue\. please try again\./i)
+      ).toBeInTheDocument();
+    });
+    expect(screen.getByRole('button', { name: /retry/i })).toBeInTheDocument();
+  });
+
+  it('Retry button recovers and displays tickets once API becomes available', async () => {
+    // 1. Initial failure
+    global.fetch = vi.fn().mockRejectedValue(new Error('Server unavailable'));
+    renderQueue();
+
+    await waitFor(() => {
+      expect(screen.getByText(/unable to load ticket queue/i)).toBeInTheDocument();
+    });
+
+    const retryBtn = screen.getByRole('button', { name: /retry/i });
+    expect(retryBtn).toBeInTheDocument();
+
+    // 2. API recovers
+    mockFetchSuccess();
+
+    // 3. User clicks Retry
+    fireEvent.click(retryBtn);
+
+    // 4. Ticket list rendered and error cleared
+    await waitFor(() => {
+      expect(screen.getAllByText('TKT-20260913-0001')[0]).toBeInTheDocument();
+      expect(screen.queryByText(/unable to load ticket queue/i)).not.toBeInTheDocument();
+    });
+  });
+
+  it('malformed response (empty object) defaults gracefully without error', async () => {
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({}),
+    });
+    renderQueue();
+
+    await waitFor(() => {
+      expect(screen.getByText('No tickets in the queue')).toBeInTheDocument();
+    });
+    expect(document.getElementById('queue-empty-state')).toBeInTheDocument();
+  });
+});
+
