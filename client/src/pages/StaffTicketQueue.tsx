@@ -22,7 +22,7 @@ interface Pagination {
   totalPages: number;
 }
 
-// ── Badge helpers ─────────────────────────────────────────────────────────────
+// ── Badge helpers ────────────────────────────────────────────────────────────
 
 const PRIORITY_STYLES: Record<string, { bg: string; color: string; label: string }> = {
   LOW:      { bg: '#ECFDF5', color: '#065F46', label: 'Low' },
@@ -44,28 +44,63 @@ const STATUS_STYLES: Record<string, { bg: string; color: string; label: string }
 
 const PBadge: React.FC<{ v: string }> = ({ v }) => {
   const s = PRIORITY_STYLES[v] ?? { bg: '#F3F4F6', color: '#374151', label: v };
-  return <span style={{ display: 'inline-block', fontSize: '0.75rem', fontWeight: 700, padding: '2px 10px', borderRadius: '9999px', backgroundColor: s.bg, color: s.color }}>{s.label}</span>;
+  return (
+    <span style={{
+      display: 'inline-block', fontSize: '0.75rem', fontWeight: 700,
+      padding: '2px 10px', borderRadius: '9999px',
+      backgroundColor: s.bg, color: s.color,
+    }}>
+      {s.label}
+    </span>
+  );
 };
 
 const SBadge: React.FC<{ v: string }> = ({ v }) => {
   const s = STATUS_STYLES[v] ?? { bg: '#F3F4F6', color: '#374151', label: v };
-  return <span style={{ display: 'inline-block', fontSize: '0.75rem', fontWeight: 700, padding: '2px 10px', borderRadius: '9999px', backgroundColor: s.bg, color: s.color }}>{s.label}</span>;
+  return (
+    <span style={{
+      display: 'inline-block', fontSize: '0.75rem', fontWeight: 700,
+      padding: '2px 10px', borderRadius: '9999px',
+      backgroundColor: s.bg, color: s.color,
+    }}>
+      {s.label}
+    </span>
+  );
 };
 
 const fmtDate = (iso: string) =>
-  new Date(iso).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+  new Date(iso).toLocaleString('en-US', {
+    month: 'short', day: 'numeric', year: 'numeric',
+    hour: '2-digit', minute: '2-digit',
+  });
 
-// ── Component ─────────────────────────────────────────────────────────────────
+// ── Skeleton loader ──────────────────────────────────────────────────────────
+
+const SkeletonRow: React.FC = () => (
+  <tr>
+    {Array.from({ length: 10 }).map((_, i) => (
+      <td key={i} style={{ padding: '14px' }}>
+        <span style={{
+          display: 'block', height: '14px', borderRadius: '6px',
+          backgroundColor: '#E5E7EB', width: i === 2 ? '80%' : '60%',
+          animation: 'pulse 1.4s ease-in-out infinite',
+        }} />
+      </td>
+    ))}
+  </tr>
+);
+
+// ── Component ────────────────────────────────────────────────────────────────
 
 const StaffTicketQueue: React.FC = () => {
   const navigate = useNavigate();
 
-  const [tickets, setTickets] = useState<StaffTicket[]>([]);
+  const [tickets, setTickets]       = useState<StaffTicket[]>([]);
   const [pagination, setPagination] = useState<Pagination | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading]       = useState(true);
+  const [error, setError]           = useState<string | null>(null);
 
-  // Filters
+  // Filters / sort / page
   const [search, setSearch]         = useState('');
   const [status, setStatus]         = useState('');
   const [itPriority, setItPriority] = useState('');
@@ -103,8 +138,21 @@ const StaffTicketQueue: React.FC = () => {
     setSort('createdAt_desc'); setPage(1);
   };
 
-  const hasFilter = search || status || itPriority || ownerId;
+  const hasFilter = !!(search || status || itPriority || ownerId);
 
+  const sortToggle = (field: string) => {
+    const dir = sort === `${field}_desc` ? 'asc' : 'desc';
+    setSort(`${field}_${dir}`);
+    setPage(1);
+  };
+
+  const sortIcon = (field: string) => {
+    if (sort === `${field}_desc`) return ' ↓';
+    if (sort === `${field}_asc`)  return ' ↑';
+    return '';
+  };
+
+  // ── Styles ─────────────────────────────────────────────────────────────────
   const card: React.CSSProperties = {
     background: '#fff', borderRadius: '10px',
     border: '1px solid #E5E7EB', boxShadow: '0 1px 3px rgba(0,0,0,0.07)',
@@ -119,22 +167,16 @@ const StaffTicketQueue: React.FC = () => {
     borderBottom: '1px solid #F3F4F6', verticalAlign: 'middle',
   };
 
-  const sortToggle = (field: string) => {
-    const cur = sort;
-    const dir = cur === `${field}_desc` ? 'asc' : 'desc';
-    setSort(`${field}_${dir}`);
-    setPage(1);
-  };
-
-  const sortIcon = (field: string) => {
-    if (sort === `${field}_desc`) return ' ↓';
-    if (sort === `${field}_asc`)  return ' ↑';
-    return '';
-  };
-
   return (
     <div id="staff-ticket-queue" style={{ fontFamily: "'Inter', system-ui, sans-serif" }}>
-      {/* Page header */}
+      <style>{`
+        @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.5} }
+        @keyframes spin   { to { transform: rotate(360deg); } }
+        @media (max-width: 768px) { #queue-table-desktop { display: none !important; } }
+        @media (min-width: 769px) { #queue-list-mobile   { display: none !important; } }
+      `}</style>
+
+      {/* ── Page header ──────────────────────────────────────────────────── */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '0.5rem' }}>
         <div>
           <h1 style={{ fontSize: '1.6rem', fontWeight: 700, color: '#111827', margin: 0 }}>Ticket Queue</h1>
@@ -143,17 +185,23 @@ const StaffTicketQueue: React.FC = () => {
           </p>
         </div>
         {hasFilter && (
-          <button id="btn-clear-filters" onClick={clearFilters} style={{
-            padding: '8px 16px', borderRadius: '8px', border: '1px solid #D1D5DB',
-            background: '#fff', color: '#374151', cursor: 'pointer', fontSize: '0.875rem', fontWeight: 500,
-          }}>↻ Clear Filters</button>
+          <button
+            id="btn-clear-filters"
+            onClick={clearFilters}
+            style={{
+              padding: '8px 16px', borderRadius: '8px', border: '1px solid #D1D5DB',
+              background: '#fff', color: '#374151', cursor: 'pointer', fontSize: '0.875rem', fontWeight: 500,
+            }}
+          >
+            ↻ Clear Filters
+          </button>
         )}
       </div>
 
-      {/* Filter bar */}
+      {/* ── Filter bar ───────────────────────────────────────────────────── */}
       <div style={{ ...card, padding: '1rem 1.25rem', marginBottom: '1rem', display: 'flex', flexWrap: 'wrap', gap: '1rem', alignItems: 'flex-end' }}>
         {/* Search */}
-        <div style={{ flex: '2', minWidth: '200px', position: 'relative' }}>
+        <div style={{ flex: '2', minWidth: '200px' }}>
           <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#374151', display: 'block', marginBottom: '4px' }}>Search</label>
           <input
             id="queue-search"
@@ -167,13 +215,17 @@ const StaffTicketQueue: React.FC = () => {
         {/* Status */}
         <div style={{ flex: '1', minWidth: '140px' }}>
           <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#374151', display: 'block', marginBottom: '4px' }}>Status</label>
-          <select id="queue-status-filter" value={status} onChange={e => { setStatus(e.target.value); setPage(1); }}
-            style={{ width: '100%', padding: '8px 10px', borderRadius: '8px', border: '1px solid #E5E7EB', fontSize: '0.85rem' }}>
+          <select
+            id="queue-status-filter"
+            value={status}
+            onChange={e => { setStatus(e.target.value); setPage(1); }}
+            style={{ width: '100%', padding: '8px 10px', borderRadius: '8px', border: '1px solid #E5E7EB', fontSize: '0.85rem' }}
+          >
             <option value="">All Statuses</option>
             <option value="NEW">New</option>
             <option value="OPEN">Open</option>
             <option value="IN_PROGRESS">In Progress</option>
-            <option value="WAITING_FOR_REQUESTER">Waiting</option>
+            <option value="WAITING_FOR_REQUESTER">Waiting for Requester</option>
             <option value="RESOLVED">Resolved</option>
             <option value="CLOSED">Closed</option>
             <option value="REOPENED">Reopened</option>
@@ -184,8 +236,12 @@ const StaffTicketQueue: React.FC = () => {
         {/* IT Priority */}
         <div style={{ flex: '1', minWidth: '130px' }}>
           <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#374151', display: 'block', marginBottom: '4px' }}>IT Priority</label>
-          <select id="queue-priority-filter" value={itPriority} onChange={e => { setItPriority(e.target.value); setPage(1); }}
-            style={{ width: '100%', padding: '8px 10px', borderRadius: '8px', border: '1px solid #E5E7EB', fontSize: '0.85rem' }}>
+          <select
+            id="queue-priority-filter"
+            value={itPriority}
+            onChange={e => { setItPriority(e.target.value); setPage(1); }}
+            style={{ width: '100%', padding: '8px 10px', borderRadius: '8px', border: '1px solid #E5E7EB', fontSize: '0.85rem' }}
+          >
             <option value="">All Priorities</option>
             <option value="LOW">Low</option>
             <option value="MEDIUM">Medium</option>
@@ -197,44 +253,65 @@ const StaffTicketQueue: React.FC = () => {
         {/* Owner */}
         <div style={{ flex: '1', minWidth: '130px' }}>
           <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#374151', display: 'block', marginBottom: '4px' }}>Owner</label>
-          <select id="queue-owner-filter" value={ownerId} onChange={e => { setOwnerId(e.target.value); setPage(1); }}
-            style={{ width: '100%', padding: '8px 10px', borderRadius: '8px', border: '1px solid #E5E7EB', fontSize: '0.85rem' }}>
+          <select
+            id="queue-owner-filter"
+            value={ownerId}
+            onChange={e => { setOwnerId(e.target.value); setPage(1); }}
+            style={{ width: '100%', padding: '8px 10px', borderRadius: '8px', border: '1px solid #E5E7EB', fontSize: '0.85rem' }}
+          >
             <option value="">All</option>
             <option value="unassigned">Unassigned</option>
           </select>
         </div>
       </div>
 
-      {/* Error */}
+      {/* ── Error banner ─────────────────────────────────────────────────── */}
       {error && (
-        <div style={{ background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: '8px', padding: '12px 16px', color: '#B91C1C', marginBottom: '1rem' }}>
-          {error}
-          <button onClick={fetchQueue} style={{ marginLeft: '12px', background: 'none', border: 'none', color: '#B91C1C', cursor: 'pointer', fontWeight: 600 }}>Retry</button>
+        <div style={{ background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: '8px', padding: '12px 16px', color: '#B91C1C', marginBottom: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <span>{error}</span>
+          <button
+            onClick={fetchQueue}
+            style={{ background: 'none', border: 'none', color: '#B91C1C', cursor: 'pointer', fontWeight: 600, textDecoration: 'underline' }}
+          >
+            Retry
+          </button>
         </div>
       )}
 
-      {/* Loading */}
+      {/* ── Loading skeleton ──────────────────────────────────────────────── */}
       {loading ? (
-        <div style={{ ...card, textAlign: 'center', padding: '4rem' }}>
-          <div style={{ display: 'inline-block', width: '32px', height: '32px', border: '3px solid #E5E7EB', borderTopColor: '#006B3C', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
-          <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+        <div style={{ ...card, overflowX: 'auto', marginBottom: '1rem' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <tbody>
+              {[...Array(5)].map((_, i) => <SkeletonRow key={i} />)}
+            </tbody>
+          </table>
         </div>
       ) : tickets.length === 0 ? (
-        /* Empty / No results */
-        <div id={hasFilter ? 'queue-no-results-state' : 'queue-empty-state'} style={{ ...card, textAlign: 'center', padding: '4rem 2rem' }}>
-          <p style={{ fontSize: '2rem', margin: 0 }}>📋</p>
-          <h3 style={{ color: '#374151', fontWeight: 600, marginTop: '0.5rem' }}>
+        /* ── Empty / No-results ─────────────────────────────────────────── */
+        <div
+          id={hasFilter ? 'queue-no-results-state' : 'queue-empty-state'}
+          style={{ ...card, textAlign: 'center', padding: '4rem 2rem' }}
+        >
+          <p style={{ fontSize: '2.5rem', margin: 0 }}>{hasFilter ? '🔍' : '📋'}</p>
+          <h3 style={{ color: '#374151', fontWeight: 600, marginTop: '0.75rem' }}>
             {hasFilter ? 'No tickets match your search or filters' : 'No tickets in the queue'}
           </h3>
+          <p style={{ color: '#6B7280', fontSize: '0.875rem' }}>
+            {hasFilter ? 'Try adjusting your search or filters.' : 'All caught up! No tickets require attention right now.'}
+          </p>
           {hasFilter && (
-            <button onClick={clearFilters} style={{ marginTop: '1rem', padding: '8px 18px', borderRadius: '8px', border: '1px solid #D1D5DB', background: '#fff', cursor: 'pointer' }}>
+            <button
+              onClick={clearFilters}
+              style={{ marginTop: '1rem', padding: '8px 20px', borderRadius: '8px', border: '1px solid #D1D5DB', background: '#fff', cursor: 'pointer', fontWeight: 500 }}
+            >
               Clear Filters
             </button>
           )}
         </div>
       ) : (
         <>
-          {/* Desktop table */}
+          {/* ── Desktop table ───────────────────────────────────────────── */}
           <div id="queue-table-desktop" style={{ ...card, overflowX: 'auto', marginBottom: '1rem' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead style={{ background: '#EAF6EF' }}>
@@ -247,14 +324,15 @@ const StaffTicketQueue: React.FC = () => {
                   <th style={{ ...th, cursor: 'pointer', textAlign: 'center' }} onClick={() => sortToggle('itPriority')}>IT Priority{sortIcon('itPriority')}</th>
                   <th style={{ ...th, cursor: 'pointer', textAlign: 'center' }} onClick={() => sortToggle('status')}>Status{sortIcon('status')}</th>
                   <th style={{ ...th, cursor: 'pointer' }} onClick={() => sortToggle('ownerId')}>Owner{sortIcon('ownerId')}</th>
-                  <th style={{ ...th, cursor: 'pointer' }} onClick={() => sortToggle('updatedAt')}>Updated{sortIcon('updatedAt')}</th>
+                  <th style={{ ...th, cursor: 'pointer' }} onClick={() => sortToggle('updatedAt')}>Last Updated{sortIcon('updatedAt')}</th>
                   <th style={th}>Action</th>
                 </tr>
               </thead>
               <tbody>
                 {tickets.map((t, idx) => (
-                  <tr key={t.id}
-                    style={{ cursor: 'pointer', background: idx % 2 === 0 ? '#fff' : '#FAFAFA' }}
+                  <tr
+                    key={t.id}
+                    style={{ background: idx % 2 === 0 ? '#fff' : '#FAFAFA', cursor: 'pointer' }}
                     onMouseEnter={e => (e.currentTarget.style.background = '#F0FDF4')}
                     onMouseLeave={e => (e.currentTarget.style.background = idx % 2 === 0 ? '#fff' : '#FAFAFA')}
                   >
@@ -267,7 +345,11 @@ const StaffTicketQueue: React.FC = () => {
                     <td style={{ ...td, textAlign: 'center' }}><PBadge v={t.requestedPriority} /></td>
                     <td style={{ ...td, textAlign: 'center' }}><PBadge v={t.itPriority} /></td>
                     <td style={{ ...td, textAlign: 'center' }}><SBadge v={t.status} /></td>
-                    <td style={td}>{t.owner?.name ?? <span style={{ color: '#9CA3AF', fontStyle: 'italic' }}>Unassigned</span>}</td>
+                    <td style={td}>
+                      {t.owner?.name ?? (
+                        <span style={{ color: '#9CA3AF', fontStyle: 'italic' }}>Unassigned</span>
+                      )}
+                    </td>
                     <td style={td}>{fmtDate(t.updatedAt)}</td>
                     <td style={td}>
                       <button
@@ -288,19 +370,20 @@ const StaffTicketQueue: React.FC = () => {
             </table>
           </div>
 
-          {/* Mobile card stack */}
+          {/* ── Mobile card stack ───────────────────────────────────────── */}
           <div id="queue-list-mobile">
             {tickets.map(t => (
-              <div key={t.id}
+              <div
+                key={t.id}
                 onClick={() => navigate(`/staff/tickets/${t.id}`)}
                 style={{ ...card, padding: '1rem', marginBottom: '0.75rem', cursor: 'pointer' }}
               >
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px', flexWrap: 'wrap', gap: '6px' }}>
                   <span style={{ color: '#006B3C', fontWeight: 700, fontSize: '0.9rem' }}>{t.ticketNumber}</span>
                   <SBadge v={t.status} />
                 </div>
-                <div style={{ fontSize: '0.875rem', color: '#374151', marginBottom: '6px' }}>{t.summary}</div>
-                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                <div style={{ fontSize: '0.875rem', color: '#374151', marginBottom: '8px', fontWeight: 500 }}>{t.summary}</div>
+                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
                   <PBadge v={t.itPriority} />
                   <span style={{ fontSize: '0.78rem', color: '#6B7280' }}>
                     {t.owner?.name ?? 'Unassigned'}
@@ -310,29 +393,55 @@ const StaffTicketQueue: React.FC = () => {
             ))}
           </div>
 
-          {/* Pagination */}
-          {pagination && pagination.totalPages > 1 && (
+          {/* ── Pagination ──────────────────────────────────────────────── */}
+          {pagination && (
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem', marginTop: '0.5rem' }}>
               <span style={{ fontSize: '0.84rem', color: '#6B7280' }}>
-                Showing {(pagination.currentPage - 1) * pagination.pageSize + 1}–
-                {Math.min(pagination.currentPage * pagination.pageSize, pagination.totalCount)} of {pagination.totalCount} tickets
+                {pagination.totalCount === 0
+                  ? 'No tickets'
+                  : `Showing ${(pagination.currentPage - 1) * pagination.pageSize + 1}–${Math.min(pagination.currentPage * pagination.pageSize, pagination.totalCount)} of ${pagination.totalCount} tickets`
+                }
               </span>
               <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
-                <select value={pageSize} onChange={e => { setPageSize(Number(e.target.value)); setPage(1); }}
-                  style={{ padding: '5px 8px', borderRadius: '6px', border: '1px solid #E5E7EB', fontSize: '0.84rem', marginRight: '8px' }}>
-                  <option value={10}>10/page</option>
-                  <option value={25}>25/page</option>
-                  <option value={50}>50/page</option>
+                <select
+                  value={pageSize}
+                  onChange={e => { setPageSize(Number(e.target.value)); setPage(1); }}
+                  style={{ padding: '5px 8px', borderRadius: '6px', border: '1px solid #E5E7EB', fontSize: '0.84rem', marginRight: '8px' }}
+                >
+                  <option value={10}>10 / page</option>
+                  <option value={25}>25 / page</option>
+                  <option value={50}>50 / page</option>
                 </select>
-                <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}
-                  style={{ padding: '5px 12px', borderRadius: '6px', border: '1px solid #E5E7EB', background: '#fff', cursor: page === 1 ? 'not-allowed' : 'pointer', color: page === 1 ? '#9CA3AF' : '#374151', fontSize: '0.84rem' }}>
+                <button
+                  onClick={() => setPage(p => Math.max(1, p - 1))}
+                  disabled={page === 1}
+                  style={{ padding: '5px 12px', borderRadius: '6px', border: '1px solid #E5E7EB', background: '#fff', cursor: page === 1 ? 'not-allowed' : 'pointer', color: page === 1 ? '#9CA3AF' : '#374151', fontSize: '0.84rem' }}
+                >
                   ‹ Prev
                 </button>
-                <span style={{ fontSize: '0.84rem', padding: '5px 10px', color: '#374151' }}>
-                  {pagination.currentPage} / {pagination.totalPages}
-                </span>
-                <button onClick={() => setPage(p => Math.min(pagination.totalPages, p + 1))} disabled={page === pagination.totalPages}
-                  style={{ padding: '5px 12px', borderRadius: '6px', border: '1px solid #E5E7EB', background: '#fff', cursor: page === pagination.totalPages ? 'not-allowed' : 'pointer', color: page === pagination.totalPages ? '#9CA3AF' : '#374151', fontSize: '0.84rem' }}>
+                {Array.from({ length: Math.min(pagination.totalPages, 5) }, (_, i) => {
+                  const p = i + 1;
+                  return (
+                    <button
+                      key={p}
+                      onClick={() => setPage(p)}
+                      style={{
+                        padding: '5px 10px', borderRadius: '6px', fontSize: '0.84rem',
+                        border: p === page ? 'none' : '1px solid #E5E7EB',
+                        background: p === page ? '#006B3C' : '#fff',
+                        color: p === page ? '#fff' : '#374151',
+                        cursor: 'pointer', fontWeight: p === page ? 700 : 400,
+                      }}
+                    >
+                      {p}
+                    </button>
+                  );
+                })}
+                <button
+                  onClick={() => setPage(p => Math.min(pagination.totalPages, p + 1))}
+                  disabled={page === pagination.totalPages || pagination.totalPages === 0}
+                  style={{ padding: '5px 12px', borderRadius: '6px', border: '1px solid #E5E7EB', background: '#fff', cursor: (page === pagination.totalPages || pagination.totalPages === 0) ? 'not-allowed' : 'pointer', color: (page === pagination.totalPages || pagination.totalPages === 0) ? '#9CA3AF' : '#374151', fontSize: '0.84rem' }}
+                >
                   Next ›
                 </button>
               </div>
@@ -340,15 +449,6 @@ const StaffTicketQueue: React.FC = () => {
           )}
         </>
       )}
-
-      <style>{`
-        @media (max-width: 768px) {
-          #queue-table-desktop { display: none; }
-        }
-        @media (min-width: 769px) {
-          #queue-list-mobile { display: none; }
-        }
-      `}</style>
     </div>
   );
 };
