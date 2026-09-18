@@ -2,16 +2,95 @@ import dotenv from 'dotenv';
 import path from 'path';
 import fs from 'fs';
 dotenv.config({ path: path.resolve(__dirname, '../.env') });
-import express, { Request, Response } from 'express';
+import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import multer from 'multer';
 import { v4 as uuidv4 } from 'uuid';
+import jwt from 'jsonwebtoken';
+import bcrypt from 'bcrypt';
+import cookieParser from 'cookie-parser';
 import { PrismaClient } from './generated/prisma/client';
 
+// ---------------------------------------------------------------------------
+// Role enum (mirrors Prisma generated enum)
+// ---------------------------------------------------------------------------
+const Role = {
+  REQUESTER: 'REQUESTER',
+  IT_STAFF: 'IT_STAFF',
+  ADMINISTRATOR: 'ADMINISTRATOR',
+} as const;
+type RoleType = typeof Role[keyof typeof Role];
+
+interface JwtPayload {
+  userId: number;
+  email: string;
+  role: RoleType;
+  mustChangePassword: boolean;
+}
+
+// Extend Express Request with user
+declare global {
+  namespace Express {
+    interface Request {
+      user?: JwtPayload;
+    }
+  }
+}
+
+const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret-change-in-production';
+
 const app = express();
-app.use(cors()); // เปิด CORS ให้ Frontend เรียกใช้งานได้
+app.use(cors({ origin: process.env.CLIENT_ORIGIN || 'http://localhost:5173', credentials: true }));
 app.use(express.json());
+app.use(cookieParser());
 const prisma = new PrismaClient();
+
+// ---------------------------------------------------------------------------
+// Auth middleware
+// ---------------------------------------------------------------------------
+function authenticate(req: Request, res: Response, next: NextFunction): void {
+  const token = req.cookies?.token;
+  if (!token) {
+    res.status(401).json({ error: { code: 'UNAUTHENTICATED', message: 'Authentication required' } });
+    return;
+  }
+  try {
+    const payload = jwt.verify(token, JWT_SECRET) as JwtPayload;
+    req.user = payload;
+    next();
+  } catch {
+    res.status(401).json({ error: { code: 'UNAUTHENTICATED', message: 'Session expired or invalid' } });
+  }
+}
+
+function requirePasswordChange(req: Request, res: Response, next: NextFunction): void {
+  if (!req.user) { next(); return; }
+  const ALLOWED_PATHS = ['/api/auth/change-password', '/api/auth/logout'];
+  if (req.user.mustChangePassword && !ALLOWED_PATHS.includes(req.path)) {
+    res.status(403).json({ error: { code: 'PASSWORD_CHANGE_REQUIRED', message: 'You must change your password before continuing.' } });
+    return;
+  }
+  next();
+}
+
+function authorize(...roles: RoleType[]) {
+  return (req: Request, res: Response, next: NextFunction): void => {
+    if (!req.user) {
+      res.status(401).json({ error: { code: 'UNAUTHENTICATED', message: 'Authentication required' } });
+      return;
+    }
+    if (!roles.includes(req.user.role)) {
+      res.status(403).json({ error: { code: 'FORBIDDEN', message: 'You do not have permission to access this resource' } });
+      return;
+    }
+    next();
+  };
+}
+
+const authOnly    = [authenticate, requirePasswordChange];
+const staffOnly   = [...authOnly, authorize(Role.IT_STAFF)];
+// Export bcrypt for potential use (suppress unused warning)
+void bcrypt;
 
 // สร้าง Endpoint สำหรับ Health Check
 app.get('/api/health', (req: Request, res: Response) => {
@@ -567,6 +646,134 @@ app.delete('/api/attachments/:id', async (req: Request, res: Response) => {
   } catch (error) {
     console.error('Soft-remove error:', error);
     res.status(500).json({ error: 'Unable to remove attachment' });
+  }
+});
+
+// ===========================================================================
+// IT STAFF ENDPOINTS
+// ===========================================================================
+
+// ---------------------------------------------------------------------------
+// Helper: status transition matrix
+// ---------------------------------------------------------------------------
+const TRANSITION_MAP: Record<string, string[]> = {
+  NEW:                   ['OPEN', 'CANCELLED'],
+  OPEN:                  ['IN_PROGRESS', 'CANCELLED'],
+  IN_PROGRESS:           ['WAITING_FOR_REQUESTER', 'RESOLVED', 'CANCELLED'],
+  WAITING_FOR_REQUESTER: ['IN_PROGRESS'],
+  RESOLVED:              ['CLOSED', 'REOPENED'],
+  CLOSED:                ['REOPENED'],
+  REOPENED:              ['IN_PROGRESS', 'CANCELLED'],
+  CANCELLED:             [],
+};
+
+// ---------------------------------------------------------------------------
+// Helper: build Prisma orderBy from sort param (field_dir)
+// ---------------------------------------------------------------------------
+function buildOrderBy(sort: string): Record<string, string> {
+  const ALLOWED_FIELDS: Record<string, string> = {
+    createdAt:    'createdAt',
+    updatedAt:    'updatedAt',
+    ticketNumber: 'ticketNumber',
+    status:       'status',
+    itPriority:   'itPriority',
+    ownerId:      'ownerId',
+  };
+  const parts = sort.split('_');
+  const dir   = parts.pop();
+  const field = parts.join('_');
+  const direction = dir === 'asc' ? 'asc' : 'desc';
+  const prismaField = ALLOWED_FIELDS[field] ?? 'createdAt';
+  return { [prismaField]: direction };
+}
+
+// ---------------------------------------------------------------------------
+// GET /api/staff/tickets — IT Staff Ticket Queue (FR-13, AC-07)
+// ---------------------------------------------------------------------------
+app.get('/api/staff/tickets', ...staffOnly, async (req: Request, res: Response) => {
+  try {
+    const ALLOWED_PAGE_SIZES = [10, 25, 50];
+
+    // --- Parse query params ---
+    const search     = typeof req.query.search     === 'string' ? req.query.search.trim()     : undefined;
+    const statusQ    = typeof req.query.status     === 'string' ? req.query.status.trim()     : undefined;
+    const itPriority = typeof req.query.itPriority === 'string' ? req.query.itPriority.trim() : undefined;
+    const ownerIdQ   = typeof req.query.ownerId    === 'string' ? req.query.ownerId.trim()    : undefined;
+    const sortParam  = typeof req.query.sort       === 'string' ? req.query.sort.trim()       : 'createdAt_desc';
+
+    const pageNum  = parseInt(String(req.query.page ?? '1'), 10);
+    const page     = isNaN(pageNum) || pageNum < 1 ? 1 : pageNum;
+
+    const pageSizeRaw = parseInt(String(req.query.pageSize ?? '10'), 10);
+    const pageSize    = ALLOWED_PAGE_SIZES.includes(pageSizeRaw) ? pageSizeRaw : 10;
+
+    // --- Build Prisma where clause ---
+    const where: Record<string, unknown> = {};
+
+    if (search) {
+      where.OR = [
+        { ticketNumber: { contains: search, mode: 'insensitive' } },
+        { summary:      { contains: search, mode: 'insensitive' } },
+      ];
+    }
+
+    if (statusQ) {
+      where.status = statusQ;
+    }
+
+    if (itPriority) {
+      where.itPriority = itPriority;
+    }
+
+    if (ownerIdQ === 'unassigned') {
+      where.ownerId = null;
+    } else if (ownerIdQ && ownerIdQ !== 'all') {
+      const ownerIdNum = parseInt(ownerIdQ, 10);
+      if (!isNaN(ownerIdNum)) {
+        where.ownerId = ownerIdNum;
+      }
+    }
+
+    const orderBy = buildOrderBy(sortParam);
+
+    // --- Execute paginated query ---
+    const [tickets, totalCount] = await Promise.all([
+      prisma.ticket.findMany({
+        where,
+        orderBy,
+        skip: (page - 1) * pageSize,
+        take: pageSize,
+        select: {
+          id:               true,
+          ticketNumber:     true,
+          createdAt:        true,
+          updatedAt:        true,
+          summary:          true,
+          status:           true,
+          requestedPriority: true,
+          itPriority:       true,
+          category:         { select: { id: true, name: true } },
+          requester:        { select: { id: true, name: true } },
+          owner:            { select: { id: true, name: true } },
+        },
+      }),
+      prisma.ticket.count({ where }),
+    ]);
+
+    const totalPages = pageSize > 0 ? Math.ceil(totalCount / pageSize) : 0;
+
+    res.status(200).json({
+      tickets,
+      pagination: {
+        currentPage: page,
+        pageSize,
+        totalCount,
+        totalPages,
+      },
+    });
+  } catch (error) {
+    console.error('Staff queue error:', error);
+    res.status(500).json({ error: { code: 'SERVER_ERROR', message: 'Unable to load ticket queue' } });
   }
 });
 

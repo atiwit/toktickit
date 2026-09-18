@@ -10,6 +10,7 @@ import './index.css';
 
 import MyTickets from './pages/MyTickets';
 import TicketDetailPage from './pages/TicketDetail';
+import StaffTicketQueue from './pages/StaffTicketQueue';
 
 function App() {
   return (
@@ -23,6 +24,7 @@ function App() {
               <Route path="/" element={<MyTickets />} />
               <Route path="/create-ticket" element={<CreateTicket />} />
               <Route path="/tickets/:id" element={<TicketDetailPage />} />
+              <Route path="/staff/tickets" element={<StaffTicketQueue />} />
             </Route>
 
             <Route path="*" element={<Navigate to="/" replace />} />
