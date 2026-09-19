@@ -31,6 +31,13 @@ const AppShell: React.FC = () => {
     return [];
   }, [user]);
 
+  // Role-appropriate home path
+  const homePath = React.useMemo(() => {
+    if (user?.role === 'IT_STAFF') return '/staff/tickets';
+    if (user?.role === 'ADMINISTRATOR') return '/admin/users';
+    return '/';
+  }, [user?.role]);
+
   const roleBadgeColor = (role: string) => {
     if (role === 'IT_STAFF') return { bg: '#EDE9FE', color: '#6D28D9' };
     if (role === 'ADMINISTRATOR') return { bg: '#FEE2E2', color: '#991B1B' };
@@ -57,7 +64,7 @@ const AppShell: React.FC = () => {
         height: '60px', boxShadow: '0 2px 8px rgba(0,0,0,0.15)', position: 'sticky', top: 0, zIndex: 100,
       }}>
         {/* Brand */}
-        <NavLink to="/" style={{ display: 'flex', alignItems: 'center', gap: '10px', textDecoration: 'none', color: '#fff', fontWeight: 800, fontSize: '1.3rem' }}>
+        <NavLink to={homePath} style={{ display: 'flex', alignItems: 'center', gap: '10px', textDecoration: 'none', color: '#fff', fontWeight: 800, fontSize: '1.3rem' }}>
           <Clock size={26} />
           TokTickIT
         </NavLink>
