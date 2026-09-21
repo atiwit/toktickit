@@ -10,27 +10,24 @@ interface User {
   createdAt: string;
 }
 
-const ROLE_STYLES: Record<string, { bg: string; color: string; label: string }> = {
-  REQUESTER:     { bg: '#DBEAFE', color: '#1E40AF', label: 'Requester' },
-  IT_STAFF:      { bg: '#EDE9FE', color: '#6D28D9', label: 'IT Staff' },
-  ADMINISTRATOR: { bg: '#FEE2E2', color: '#991B1B', label: 'Administrator' },
-};
-
 const RoleBadge: React.FC<{ role: string }> = ({ role }) => {
-  const s = ROLE_STYLES[role] ?? { bg: '#F3F4F6', color: '#374151', label: role };
+  const roleClass =
+    role === 'REQUESTER' ? 'badge-role-requester' :
+    role === 'IT_STAFF' ? 'badge-role-it-staff' :
+    role === 'ADMINISTRATOR' ? 'badge-role-admin' : '';
+  const label =
+    role === 'REQUESTER' ? 'Requester' :
+    role === 'IT_STAFF' ? 'IT Staff' :
+    role === 'ADMINISTRATOR' ? 'Administrator' : role;
   return (
-    <span style={{ display: 'inline-block', fontSize: '0.75rem', fontWeight: 700, padding: '2px 10px', borderRadius: '9999px', backgroundColor: s.bg, color: s.color }}>
-      {s.label}
+    <span className={`badge-role ${roleClass}`}>
+      {label}
     </span>
   );
 };
 
 const StatusBadge: React.FC<{ isActive: boolean }> = ({ isActive }) => (
-  <span style={{
-    display: 'inline-block', fontSize: '0.75rem', fontWeight: 700, padding: '2px 10px', borderRadius: '9999px',
-    backgroundColor: isActive ? '#DCFCE7' : '#F3F4F6',
-    color: isActive ? '#14532D' : '#6B7280',
-  }}>
+  <span className={`badge-status ${isActive ? 'badge-status-active' : 'badge-status-inactive'}`}>
     {isActive ? 'Active' : 'Inactive'}
   </span>
 );
@@ -221,8 +218,8 @@ const UserModal: React.FC<UserModalProps> = ({ mode, user, currentUserId, onClos
           {(isCreate || isReset) && (
             <>
               {isCreate && (
-                <div style={{ background: '#F0FDF4', border: '1px solid #BBF7D0', borderRadius: '8px', padding: '8px 12px', marginBottom: '1rem', fontSize: '0.78rem', color: '#14532D' }}>
-                  Password rules: min. 8 characters · 1 uppercase · 1 lowercase · 1 number
+                <div style={{ background: 'var(--color-pale-green)', border: '1px solid #BBF7D0', borderRadius: '8px', padding: '8px 12px', marginBottom: '1rem', fontSize: '0.78rem', color: 'var(--color-primary)' }}>
+                  Password rules: min. 8 characters · 1 uppercase · 1 lowercase · 1 number · 1 special character
                 </div>
               )}
               <div style={{ marginBottom: '1rem' }}>
@@ -230,7 +227,7 @@ const UserModal: React.FC<UserModalProps> = ({ mode, user, currentUserId, onClos
                   {isReset ? 'New Password' : 'Password'}
                 </label>
                 <input id="modal-password" type="password" value={password} onChange={e => setPassword(e.target.value)}
-                  placeholder="min. 8 chars, uppercase, lowercase, number"
+                  placeholder="min. 8 chars, uppercase, lowercase, number, special char"
                   style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: `1px solid ${errors.password ? '#EF4444' : '#E5E7EB'}`, boxSizing: 'border-box', fontSize: '0.875rem' }} />
                 {errors.password && <p style={{ color: '#DC2626', fontSize: '0.78rem', margin: '3px 0 0' }}>{errors.password}</p>}
               </div>
@@ -457,13 +454,13 @@ const UserManagement: React.FC = () => {
 // ── Shared sub-components ─────────────────────────────────────────────────────
 
 const thStyle: React.CSSProperties = {
-  color: '#006B3C', fontWeight: 600, fontSize: '0.78rem',
+  color: 'var(--color-primary)', fontWeight: 600, fontSize: '0.78rem',
   padding: '11px 14px', textAlign: 'left',
   borderBottom: '1px solid #D1FAE5',
 };
 
 const tdStyle: React.CSSProperties = {
-  padding: '12px 14px', fontSize: '0.875rem', borderBottom: '1px solid #F3F4F6',
+  padding: '12px 14px', fontSize: '0.875rem', borderBottom: '1px solid var(--color-border)',
 };
 
 const ActionButtons: React.FC<{ u: User; onEdit: () => void; onReset: () => void }> = ({ u, onEdit, onReset }) => (
