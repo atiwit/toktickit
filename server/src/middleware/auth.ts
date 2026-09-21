@@ -17,11 +17,16 @@ declare global {
 
 const JWT_SECRET = process.env.JWT_SECRET || 'toktickit-lab3-dev-secret-key';
 
+import { PrismaClient } from '../generated/prisma/client';
+
+const prisma = new PrismaClient();
+
 /**
  * Middleware: Authenticate JWT from httpOnly cookie.
- * Attaches req.user if valid; returns 401 otherwise.
+ * Verifies token signature and checks database for active user status (session invalidation).
+ * Attaches req.user if valid and active; returns 401 otherwise.
  */
-export const authenticateToken = (req: Request, res: Response, next: NextFunction): void => {
+export const authenticateToken = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   const token = req.cookies?.token;
 
   if (!token) {
@@ -36,7 +41,23 @@ export const authenticateToken = (req: Request, res: Response, next: NextFunctio
       role: string;
       mustChangePassword: boolean;
     };
-    req.user = decoded;
+
+    const user = await prisma.user.findUnique({
+      where: { id: decoded.id },
+      select: { id: true, role: true, isActive: true, mustChangePassword: true },
+    });
+
+    if (!user || !user.isActive) {
+      res.clearCookie('token');
+      res.status(401).json({ error: 'Account is inactive or session has been invalidated' });
+      return;
+    }
+
+    req.user = {
+      ...decoded,
+      role: user.role,
+      mustChangePassword: user.mustChangePassword,
+    };
     next();
   } catch {
     res.status(401).json({ error: 'Invalid or expired token' });

@@ -510,204 +510,62 @@ describe('ADMIN-12 — Admin cannot deactivate own account (self-deactivation)',
 // ===========================================================================
 describe('ADMIN-13 — Cannot deactivate the last active Administrator', () => {
   it('returns 409 LAST_ADMIN when deactivating the last active admin (after deactivating admin2)', async () => {
-    // First deactivate admin2 so admin1 is the only active admin
+    // 1. Deactivate admin2 so admin1 is the only active admin remaining
     await request(app)
       .patch(`/api/admin/users/${adminUser2Id}`)
       .set('Cookie', adminCookie)
       .send({ isActive: false });
 
-    // Now try to deactivate admin1 (own account) — should return 403 (self-deactivation wins)
-    // Instead try via a dedicated 3rd admin approach: create a temp admin, login, try to deactivate admin1
-    // For simplicity, restore admin2 first and test deactivating admin2 when admin1 is the last
-    // Re-activate admin2
+    // 2. admin1 (last active admin) tries to deactivate admin1 → triggers 409 LAST_ADMIN
+    const res = await request(app)
+      .patch(`/api/admin/users/${adminUserId}`)
+      .set('Cookie', adminCookie)
+      .send({ isActive: false });
+
+    expect(res.status).toBe(409);
+    expect(res.body.error.code).toBe('LAST_ADMIN');
+    expect(res.body.error.message).toMatch(/last active administrator/i);
+
+    // Cleanup: restore admin2
     await request(app)
       .patch(`/api/admin/users/${adminUser2Id}`)
       .set('Cookie', adminCookie)
       .send({ isActive: true });
+  });
 
-    // Deactivate admin2
-    await request(app)
-      .patch(`/api/admin/users/${adminUser2Id}`)
-      .set('Cookie', adminCookie)
-      .send({ isActive: false });
-
-    // Create a temporary third admin to test deactivating admin1 (the last active one)
+  it('immediately invalidates session when a user is deactivated (session invalidation)', async () => {
+    // 1. Create a test staff user and login
     const passwordHash = await bcrypt.hash(INITIAL_PASSWORD, BCRYPT_COST);
-    const tempAdmin = await prisma.user.create({
-      data: { name: 'Temp Admin', email: 'tempadmin.admin13@test.com', passwordHash, role: 'ADMINISTRATOR', isActive: true, mustChangePassword: false },
+    const testStaff = await prisma.user.create({
+      data: { name: 'Session Test Staff', email: 'session.staff@test.com', passwordHash, role: 'IT_STAFF', isActive: true, mustChangePassword: false },
     });
 
-    const tempLogin = await request(app)
+    const staffLogin = await request(app)
       .post('/api/auth/login')
-      .send({ email: 'tempadmin.admin13@test.com', password: INITIAL_PASSWORD });
-    const tempCookie = extractCookie(tempLogin);
+      .send({ email: 'session.staff@test.com', password: INITIAL_PASSWORD });
+    const staffCookie = extractCookie(staffLogin);
 
-    // Deactivate tempAdmin — now admin1 is only active admin
+    // Verify session works initially
+    const meResBefore = await request(app)
+      .get('/api/auth/me')
+      .set('Cookie', staffCookie);
+    expect(meResBefore.status).toBe(200);
+
+    // 2. Admin deactivates testStaff
     await request(app)
-      .patch(`/api/admin/users/${tempAdmin.id}`)
+      .patch(`/api/admin/users/${testStaff.id}`)
       .set('Cookie', adminCookie)
       .send({ isActive: false });
 
-    // Try to deactivate admin1 (last active admin) via tempAdmin's cookie — 403 since tempAdmin is now inactive
-    // Better: use admin1 cookie to try deactivating another user that would leave admin1 alone
-    // The cleanest test: admin2 is inactive, try to deactivate admin1 itself → 403 (self-deactivation)
-    // The LAST_ADMIN path triggers when editing ANOTHER admin. Let's create admin3 and have admin1 deactivate admin1...
-    // Actually the correct scenario: admin2 is inactive & tempAdmin is inactive → admin1 is last active admin.
-    // Now admin1 tries to deactivate admin1 → 403 SELF_DEACTIVATION (self-check fires before last-admin check).
-    // To properly test LAST_ADMIN: admin1 tries to deactivate admin2 when admin2 is already inactive — no, admin2 is already inactive.
-    // The real test: admin1 (last active admin) deactivating itself triggers SELF_DEACTIVATION.
-    // For LAST_ADMIN: there must be another active admin trying to deactivate the only remaining active admin.
-    // Restore tempAdmin and use it to try deactivating admin1.
-    await request(app)
-      .patch(`/api/admin/users/${tempAdmin.id}`)
-      .set('Cookie', adminCookie)
-      .send({ isActive: true });
+    // 3. testStaff tries to make request with existing cookie → must be rejected with 401
+    const meResAfter = await request(app)
+      .get('/api/auth/me')
+      .set('Cookie', staffCookie);
+    expect(meResAfter.status).toBe(401);
+    expect(meResAfter.body.error.code).toBe('UNAUTHENTICATED');
 
-    // Deactivate admin2 again just to be sure
-    // Now: admin1 active, admin2 inactive, tempAdmin active
-    // Have tempAdmin try to deactivate admin1 when admin2 is inactive
-    // But that still leaves tempAdmin as active admin, so LAST_ADMIN won't trigger.
-    // LAST_ADMIN triggers only when the target IS the last active admin.
-    // Deactivate tempAdmin so only admin1 is active, then have... we need a cookie of a non-admin to do this.
-    // Final approach: check that activeAdminCount === 0 after removing admin1.
-    // admin2 is inactive, tempAdmin is active. Deactivate tempAdmin so admin1 is last.
-    await request(app)
-      .patch(`/api/admin/users/${tempAdmin.id}`)
-      .set('Cookie', adminCookie)
-      .send({ isActive: false });
-
-    // admin1 is now last active admin. tempAdmin (inactive) tries to deactivate admin1 — but tempAdmin is inactive, can't login.
-    // The only authenticated session we have is adminCookie (admin1). Self-deactivation fires first.
-    // Conclusion: to purely test LAST_ADMIN with 403 vs 409 distinction: we need to use admin1 cookie to deactivate admin1 which triggers SELF_DEACTIVATION(403), NOT last_admin.
-    // The LAST_ADMIN check fires when isActive:false AND userId !== req.user.userId AND existingUser.role===ADMINISTRATOR AND activeAdminCount===0.
-    // So we need admin1 to try deactivating admin2 (another admin) when admin2 is the last active admin (admin1 is also active).
-    // → Actually the scenario is: deactivate admin2 when admin2 is the ONLY remaining admin (admin1 is deactivated).
-    // But admin1 is our authenticated admin — can't deactivate itself.
-    // SIMPLEST: Create a new admin4, login as admin4, then both admin1 and admin2 are inactive, admin4 tries to deactivate itself → 403.
-    // OR: admin4 tries to change admin1's role away from ADMINISTRATOR when admin1 is only active admin → 409 LAST_ADMIN.
-    // That's the cleaner path. Let's restore admin2 to active.
-    await request(app)
-      .patch(`/api/admin/users/${adminUser2Id}`)
-      .set('Cookie', adminCookie)
-      .send({ isActive: true });
-    await prisma.user.delete({ where: { id: tempAdmin.id } });
-
-    // Now: admin1 active, admin2 active. Deactivate admin2 so admin1 is last active admin.
-    await request(app)
-      .patch(`/api/admin/users/${adminUser2Id}`)
-      .set('Cookie', adminCookie)
-      .send({ isActive: false });
-
-    // admin1 is now the last active admin. Try to deactivate admin2 — admin2 is already inactive (isActive:false → no change in admin count).
-    // The LAST_ADMIN check: isActive===false AND existingUser.role===ADMINISTRATOR → count admins excluding admin2. admin1 is active → count=1 → no error.
-    // That doesn't work either.
-
-    // The definitive scenario per the code logic (lines 1142-1150):
-    // `if ((isActive === false || (role && role !== Role.ADMINISTRATOR)) && existingUser.role === Role.ADMINISTRATOR)`
-    // → The target must currently BE an ADMINISTRATOR, and we're trying to deactivate OR change their role.
-    // → activeAdminCount = count of active admins EXCLUDING the target.
-    // → If that count === 0 → 409 LAST_ADMIN.
-    // So: target = admin1 (ADMINISTRATOR, isActive:true), requester = admin2 (but admin2 is deactivated...).
-    // We need requester to be an active admin (other than admin1) and try to deactivate admin1 who is the ONLY other active admin.
-    // → Re-activate admin2. → admin1 deactivates admin2 → admin1 is last active → admin1 tries to deactivate admin1 → SELF_DEACTIVATION.
-    // The only way to test LAST_ADMIN 409: Have admin1 try to deactivate admin2 when admin2 is the LAST admin.
-    // That means admin1 must be inactive. But admin1 is our test actor.
-
-    // Resolution: Create admin3, login as admin3. Deactivate admin1 via admin3.
-    // Then admin3 tries to deactivate admin2 (when admin2 is the only other remaining admin, and admin1 is inactive).
-    // Wait — the check counts active admins EXCLUDING THE TARGET. If admin1 is inactive, target=admin2, count of active admins excl. admin2 = 0 → 409 LAST_ADMIN.
-
-    const passwordHash2 = await bcrypt.hash(INITIAL_PASSWORD, BCRYPT_COST);
-    const admin3 = await prisma.user.create({
-      data: { name: 'Admin Three', email: 'admin3.admin13@test.com', passwordHash: passwordHash2, role: 'ADMINISTRATOR', isActive: true, mustChangePassword: false },
-    });
-
-    const admin3Login = await request(app)
-      .post('/api/auth/login')
-      .send({ email: 'admin3.admin13@test.com', password: INITIAL_PASSWORD });
-    const admin3Cookie = extractCookie(admin3Login);
-
-    // Re-activate admin2
-    await request(app)
-      .patch(`/api/admin/users/${adminUser2Id}`)
-      .set('Cookie', adminCookie)
-      .send({ isActive: true });
-
-    // Deactivate admin1 via admin3 so admin1 becomes inactive
-    await request(app)
-      .patch(`/api/admin/users/${adminUserId}`)
-      .set('Cookie', admin3Cookie)
-      .send({ isActive: false });
-
-    // Now: admin1 inactive, admin2 active, admin3 active.
-    // Deactivate admin2 via admin3 → 2 remaining active admins excl admin2 = admin3 alone = count=1 → no error. Still works.
-    // Deactivate admin3 itself → SELF_DEACTIVATION.
-    // To get LAST_ADMIN: admin3 tries to deactivate admin2 when admin2 is the last (admin1 inactive, admin3 is the requester → excluded from count).
-    // Count of active admins excl admin2 = admin3 = 1. Not 0. Still no error.
-    // FINALLY: Deactivate admin3 too (keeping admin2 active), then login as admin2 and try to deactivate admin2 → SELF_DEACTIVATION.
-
-    // The simplest valid LAST_ADMIN test: 
-    // Situation: only 2 active admins: admin2 and admin3.
-    // admin3 tries to deactivate admin2 → count excl admin2 = admin3 = 1 → NOT last admin → succeeds.
-    // Situation: only 1 active admin: admin2. admin3 tries to deactivate admin2 → count excl admin2 = 0 → 409 LAST_ADMIN.
-    // To have admin3 as the REQUESTER and admin2 as the TARGET (last active admin):
-    // admin1 is inactive, admin3 is inactive. Only admin2 is active.
-    // But then we can't log in as admin3 (if inactive).
-    // Solution: admin3 IS active and IS the requester. admin2 IS inactive. admin1 IS inactive.
-    // → Then admin3 is the last active admin. admin3 tries to deactivate admin3 → SELF_DEACTIVATION.
-    // → OR admin3 tries to deactivate admin1 (who is ADMINISTRATOR but already INACTIVE):
-    //   isActive===false condition → existingUser.role===ADMINISTRATOR → count excl admin1 = admin3(active) = 1 → no error.
-
-    // THE REAL ANSWER: The LAST_ADMIN check requires the TARGET to be an active Administrator whose removal would leave 0 active admins.
-    // The REQUESTER must be a DIFFERENT active admin (otherwise SELF_DEACTIVATION fires first).
-    // So we need: 2 active admins (A and B, where A=requester, B=target), and A tries to deactivate B.
-    // Count of active admins excl B = A = 1 → NOT last admin. LAST_ADMIN never triggers in a 2-admin system!
-    // LAST_ADMIN triggers when: A is the requester (active admin), B is the target (last remaining admin), and COUNT excl B = 0.
-    // This means A is NOT active! But A must be authenticated...
-    
-    // CONCLUSION: The LAST_ADMIN check as implemented (count excl. target === 0) fires when:
-    // - There is exactly 1 active admin in the system (the target).
-    // - The requester is a DIFFERENT user (but must be authenticated as admin).
-    // - This is a logical paradox unless the system allows a deactivated admin session to still be authenticated.
-    // Actually: JWT is still valid after deactivation. So: admin3 is active, logs in, then admin1 deactivates admin3.
-    // admin3's JWT is still valid. admin3 uses their cookie to try to deactivate admin2 (the only remaining active admin, excl admin3 who is now inactive but has valid JWT).
-    
-    // Let's implement that scenario:
-    // Restore all admins to active first.
-    await request(app)
-      .patch(`/api/admin/users/${adminUserId}`)
-      .set('Cookie', admin3Cookie)
-      .send({ isActive: true });
-
-    // Now: admin1 active, admin2 active, admin3 active.
-    // Deactivate admin3 via admin1 (so admin3's JWT is still valid but account is inactive)
-    await request(app)
-      .patch(`/api/admin/users/${admin3.id}`)
-      .set('Cookie', adminCookie)
-      .send({ isActive: false });
-
-    // Deactivate admin2 via admin1
-    await request(app)
-      .patch(`/api/admin/users/${adminUser2Id}`)
-      .set('Cookie', adminCookie)
-      .send({ isActive: false });
-
-    // Now: admin1 is the ONLY active admin. admin3's JWT is still valid.
-    // admin3 (inactive, valid JWT) tries to deactivate admin1 (the last active admin) → 409 LAST_ADMIN.
-    const lastAdminRes = await request(app)
-      .patch(`/api/admin/users/${adminUserId}`)
-      .set('Cookie', admin3Cookie)
-      .send({ isActive: false });
-
-    expect(lastAdminRes.status).toBe(409);
-    expect(lastAdminRes.body.error.code).toBe('LAST_ADMIN');
-
-    // Cleanup: restore admin2 and admin3, delete admin3 test user
-    await request(app)
-      .patch(`/api/admin/users/${adminUser2Id}`)
-      .set('Cookie', adminCookie)
-      .send({ isActive: true });
-    await prisma.user.delete({ where: { id: admin3.id } });
+    // Cleanup
+    await prisma.user.delete({ where: { id: testStaff.id } });
   });
 });
 
@@ -816,45 +674,25 @@ describe('ADMIN-15 — Non-admin access to user management returns 403', () => {
 // ===========================================================================
 describe('ADMIN-16 — Cannot change role of the last active Administrator', () => {
   it('returns 409 LAST_ADMIN when changing last active admin role to non-admin', async () => {
-    const passwordHash = await bcrypt.hash(INITIAL_PASSWORD, BCRYPT_COST);
-
-    // Create admin4 and login
-    const admin4 = await prisma.user.create({
-      data: { name: 'Admin Four', email: 'admin4.admin16@test.com', passwordHash, role: 'ADMINISTRATOR', isActive: true, mustChangePassword: false },
-    });
-
-    const admin4Login = await request(app)
-      .post('/api/auth/login')
-      .send({ email: 'admin4.admin16@test.com', password: INITIAL_PASSWORD });
-    const admin4Cookie = extractCookie(admin4Login);
-
-    // Deactivate admin2 (to reduce active admin count)
+    // 1. Deactivate admin2 so admin1 is the only active admin remaining
     await request(app)
       .patch(`/api/admin/users/${adminUser2Id}`)
       .set('Cookie', adminCookie)
       .send({ isActive: false });
 
-    // Deactivate admin4 via admin1, so admin1 is last active admin
-    await request(app)
-      .patch(`/api/admin/users/${admin4.id}`)
-      .set('Cookie', adminCookie)
-      .send({ isActive: false });
-
-    // admin4 (inactive, valid JWT) tries to change admin1's role to IT_STAFF
-    // admin1 is last active admin → should trigger 409 LAST_ADMIN
+    // 2. admin1 (last active admin) tries to change role to IT_STAFF → triggers 409 LAST_ADMIN
     const res = await request(app)
       .patch(`/api/admin/users/${adminUserId}`)
-      .set('Cookie', admin4Cookie)
+      .set('Cookie', adminCookie)
       .send({ role: 'IT_STAFF' });
 
     expect(res.status).toBe(409);
     expect(res.body.error.code).toBe('LAST_ADMIN');
 
-    // Cleanup
+    // Cleanup: restore admin2
     await request(app)
       .patch(`/api/admin/users/${adminUser2Id}`)
       .set('Cookie', adminCookie)
       .send({ isActive: true });
-    await prisma.user.delete({ where: { id: admin4.id } });
   });
 });
