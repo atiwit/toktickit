@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { useAuth } from '../context/AuthContext';
 
 interface User {
   id: number;
@@ -9,20 +10,27 @@ interface User {
   createdAt: string;
 }
 
-const ROLE_STYLES: Record<string, { bg: string; color: string; label: string }> = {
-  REQUESTER:     { bg: '#DBEAFE', color: '#1E40AF', label: 'Requester' },
-  IT_STAFF:      { bg: '#EDE9FE', color: '#6D28D9', label: 'IT Staff' },
-  ADMINISTRATOR: { bg: '#FEE2E2', color: '#991B1B', label: 'Administrator' },
-};
-
 const RoleBadge: React.FC<{ role: string }> = ({ role }) => {
-  const s = ROLE_STYLES[role] ?? { bg: '#F3F4F6', color: '#374151', label: role };
+  const roleClass =
+    role === 'REQUESTER' ? 'badge-role-requester' :
+    role === 'IT_STAFF' ? 'badge-role-it-staff' :
+    role === 'ADMINISTRATOR' ? 'badge-role-admin' : '';
+  const label =
+    role === 'REQUESTER' ? 'Requester' :
+    role === 'IT_STAFF' ? 'IT Staff' :
+    role === 'ADMINISTRATOR' ? 'Administrator' : role;
   return (
-    <span style={{ display: 'inline-block', fontSize: '0.75rem', fontWeight: 700, padding: '2px 10px', borderRadius: '9999px', backgroundColor: s.bg, color: s.color }}>
-      {s.label}
+    <span className={`badge-role ${roleClass}`}>
+      {label}
     </span>
   );
 };
+
+const StatusBadge: React.FC<{ isActive: boolean }> = ({ isActive }) => (
+  <span className={`badge-status ${isActive ? 'badge-status-active' : 'badge-status-inactive'}`}>
+    {isActive ? 'Active' : 'Inactive'}
+  </span>
+);
 
 const fmtDate = (iso: string) =>
   new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
@@ -32,14 +40,17 @@ const fmtDate = (iso: string) =>
 interface UserModalProps {
   mode: 'create' | 'edit' | 'reset';
   user?: User | null;
+  currentUserId?: number;
   onClose: () => void;
   onSaved: () => void;
 }
 
-const UserModal: React.FC<UserModalProps> = ({ mode, user, onClose, onSaved }) => {
+const UserModal: React.FC<UserModalProps> = ({ mode, user, currentUserId, onClose, onSaved }) => {
   const isCreate = mode === 'create';
   const isEdit   = mode === 'edit';
   const isReset  = mode === 'reset';
+
+  const isSelf = isEdit && user != null && currentUserId != null && user.id === currentUserId;
 
   const [name,     setName]     = useState(isEdit ? (user?.name ?? '') : '');
   const [email,    setEmail]    = useState(isEdit ? (user?.email ?? '') : '');
@@ -168,21 +179,55 @@ const UserModal: React.FC<UserModalProps> = ({ mode, user, onClose, onSaved }) =
                 </select>
                 {errors.role && <p style={{ color: '#DC2626', fontSize: '0.78rem', margin: '3px 0 0' }}>{errors.role}</p>}
               </div>
-              <div style={{ marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <input id="modal-active" type="checkbox" checked={isActive} onChange={e => setIsActive(e.target.checked)} style={{ width: '16px', height: '16px', cursor: 'pointer' }} />
-                <label htmlFor="modal-active" style={{ fontSize: '0.875rem', fontWeight: 500, color: '#374151', cursor: 'pointer' }}>Active account</label>
+
+              {/* Active toggle — disabled for own account (BR-21 / UI-14) */}
+              <div style={{ marginBottom: '1rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <input
+                    id="modal-active"
+                    type="checkbox"
+                    checked={isActive}
+                    onChange={e => setIsActive(e.target.checked)}
+                    disabled={isSelf}
+                    style={{ width: '16px', height: '16px', cursor: isSelf ? 'not-allowed' : 'pointer', opacity: isSelf ? 0.5 : 1 }}
+                  />
+                  <label htmlFor="modal-active" style={{ fontSize: '0.875rem', fontWeight: 500, color: '#374151', cursor: isSelf ? 'not-allowed' : 'pointer' }}>
+                    Active account
+                  </label>
+                </div>
+                {isSelf && (
+                  <p style={{ color: '#92400E', fontSize: '0.78rem', margin: '4px 0 0', background: '#FEF3C7', borderRadius: '6px', padding: '4px 8px', display: 'inline-block' }}>
+                    You cannot deactivate your own account
+                  </p>
+                )}
+                {isEdit && user?.role === 'ADMINISTRATOR' && !isSelf && (
+                  <p style={{ color: '#6B7280', fontSize: '0.78rem', margin: '4px 0 0' }}>
+                    ⚠️ Deactivating the last active Administrator is prevented by the system.
+                  </p>
+                )}
               </div>
             </>
           )}
 
+          {isReset && (
+            <div style={{ background: '#FFFBEB', border: '1px solid #FCD34D', borderRadius: '8px', padding: '10px 14px', marginBottom: '1rem', fontSize: '0.8rem', color: '#92400E' }}>
+              ⚠️ This will require the user to change their password at next login.
+            </div>
+          )}
+
           {(isCreate || isReset) && (
             <>
+              {isCreate && (
+                <div style={{ background: 'var(--color-pale-green)', border: '1px solid #BBF7D0', borderRadius: '8px', padding: '8px 12px', marginBottom: '1rem', fontSize: '0.78rem', color: 'var(--color-primary)' }}>
+                  Password rules: min. 8 characters · 1 uppercase · 1 lowercase · 1 number · 1 special character
+                </div>
+              )}
               <div style={{ marginBottom: '1rem' }}>
                 <label style={{ fontSize: '0.85rem', fontWeight: 600, color: '#374151', display: 'block', marginBottom: '4px' }}>
                   {isReset ? 'New Password' : 'Password'}
                 </label>
                 <input id="modal-password" type="password" value={password} onChange={e => setPassword(e.target.value)}
-                  placeholder="min. 8 chars, uppercase, lowercase, number"
+                  placeholder="min. 8 chars, uppercase, lowercase, number, special char"
                   style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: `1px solid ${errors.password ? '#EF4444' : '#E5E7EB'}`, boxSizing: 'border-box', fontSize: '0.875rem' }} />
                 {errors.password && <p style={{ color: '#DC2626', fontSize: '0.78rem', margin: '3px 0 0' }}>{errors.password}</p>}
               </div>
@@ -214,6 +259,7 @@ const UserModal: React.FC<UserModalProps> = ({ mode, user, onClose, onSaved }) =
 // ── Main Component ────────────────────────────────────────────────────────────
 
 const UserManagement: React.FC = () => {
+  const { user: currentUser } = useAuth();
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -253,6 +299,17 @@ const UserManagement: React.FC = () => {
 
   return (
     <div id="user-management" style={{ fontFamily: "'Inter', system-ui, sans-serif" }}>
+      {/* Responsive styles */}
+      <style>{`
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .um-table-wrapper { display: block; }
+        .um-card-stack   { display: none; }
+        @media (max-width: 767px) {
+          .um-table-wrapper { display: none; }
+          .um-card-stack   { display: flex; flex-direction: column; gap: 0.75rem; }
+        }
+      `}</style>
+
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '0.5rem' }}>
         <div>
@@ -305,77 +362,79 @@ const UserManagement: React.FC = () => {
         </div>
       )}
 
-      {/* Table */}
+      {/* Loading */}
       {loading ? (
         <div style={{ textAlign: 'center', padding: '4rem' }}>
           <div style={{ display: 'inline-block', width: '32px', height: '32px', border: '3px solid #E5E7EB', borderTopColor: '#006B3C', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
-          <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
         </div>
       ) : users.length === 0 ? (
+        /* Empty state */
         <div style={{ ...card, textAlign: 'center', padding: '4rem' }}>
           <p style={{ fontSize: '1.5rem', margin: 0 }}>👤</p>
           <h3 style={{ color: '#374151', marginTop: '0.5rem', fontWeight: 600 }}>No users found</h3>
+          {(search || roleFilter) && (
+            <p style={{ color: '#6B7280', fontSize: '0.88rem' }}>
+              No users match your search.{' '}
+              <button onClick={() => { setSearch(''); setRoleFilter(''); }}
+                style={{ color: '#006B3C', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 600, padding: 0 }}>
+                Clear filters
+              </button>
+            </p>
+          )}
         </div>
       ) : (
-        <div style={{ ...card, overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-            <thead style={{ background: '#EAF6EF' }}>
-              <tr>
-                <th style={{ color: '#006B3C', fontWeight: 600, fontSize: '0.78rem', padding: '11px 14px', textAlign: 'left', borderBottom: '1px solid #D1FAE5' }}>Name</th>
-                <th style={{ color: '#006B3C', fontWeight: 600, fontSize: '0.78rem', padding: '11px 14px', textAlign: 'left', borderBottom: '1px solid #D1FAE5' }}>Email</th>
-                <th style={{ color: '#006B3C', fontWeight: 600, fontSize: '0.78rem', padding: '11px 14px', textAlign: 'center', borderBottom: '1px solid #D1FAE5' }}>Role</th>
-                <th style={{ color: '#006B3C', fontWeight: 600, fontSize: '0.78rem', padding: '11px 14px', textAlign: 'center', borderBottom: '1px solid #D1FAE5' }}>Status</th>
-                <th style={{ color: '#006B3C', fontWeight: 600, fontSize: '0.78rem', padding: '11px 14px', textAlign: 'left', borderBottom: '1px solid #D1FAE5' }}>Created</th>
-                <th style={{ color: '#006B3C', fontWeight: 600, fontSize: '0.78rem', padding: '11px 14px', textAlign: 'right', borderBottom: '1px solid #D1FAE5' }}>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {users.map((u, idx) => (
-                <tr key={u.id} style={{ background: idx % 2 === 0 ? '#fff' : '#FAFAFA' }}>
-                  <td style={{ padding: '12px 14px', fontSize: '0.875rem', color: '#111827', fontWeight: 600, borderBottom: '1px solid #F3F4F6' }}>
-                    {u.name}
-                  </td>
-                  <td style={{ padding: '12px 14px', fontSize: '0.875rem', color: '#374151', borderBottom: '1px solid #F3F4F6' }}>
-                    {u.email}
-                  </td>
-                  <td style={{ padding: '12px 14px', textAlign: 'center', borderBottom: '1px solid #F3F4F6' }}>
-                    <RoleBadge role={u.role} />
-                  </td>
-                  <td style={{ padding: '12px 14px', textAlign: 'center', borderBottom: '1px solid #F3F4F6' }}>
-                    <span style={{
-                      display: 'inline-block', fontSize: '0.75rem', fontWeight: 700, padding: '2px 10px', borderRadius: '9999px',
-                      backgroundColor: u.isActive ? '#DCFCE7' : '#F3F4F6',
-                      color: u.isActive ? '#14532D' : '#6B7280',
-                    }}>
-                      {u.isActive ? 'Active' : 'Inactive'}
-                    </span>
-                  </td>
-                  <td style={{ padding: '12px 14px', fontSize: '0.8rem', color: '#6B7280', borderBottom: '1px solid #F3F4F6' }}>
-                    {fmtDate(u.createdAt)}
-                  </td>
-                  <td style={{ padding: '12px 14px', textAlign: 'right', borderBottom: '1px solid #F3F4F6' }}>
-                    <div style={{ display: 'flex', gap: '6px', justifyContent: 'flex-end' }}>
-                      <button
-                        id={`btn-edit-user-${u.id}`}
-                        onClick={() => setModal({ mode: 'edit', user: u })}
-                        style={{ padding: '4px 12px', borderRadius: '6px', border: '1px solid #D1D5DB', background: '#fff', cursor: 'pointer', fontSize: '0.78rem', fontWeight: 600, color: '#374151' }}
-                      >
-                        Edit
-                      </button>
-                      <button
-                        id={`btn-reset-password-${u.id}`}
-                        onClick={() => setModal({ mode: 'reset', user: u })}
-                        style={{ padding: '4px 12px', borderRadius: '6px', border: '1px solid #FCD34D', background: '#FFFBEB', cursor: 'pointer', fontSize: '0.78rem', fontWeight: 600, color: '#92400E' }}
-                      >
-                        Reset PW
-                      </button>
-                    </div>
-                  </td>
+        <>
+          {/* ── Desktop Table ── */}
+          <div className="um-table-wrapper" style={{ ...card, overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <thead style={{ background: '#EAF6EF' }}>
+                <tr>
+                  <th style={thStyle}>Name</th>
+                  <th style={thStyle}>Email</th>
+                  <th style={{ ...thStyle, textAlign: 'center' }}>Role</th>
+                  <th style={{ ...thStyle, textAlign: 'center' }}>Status</th>
+                  <th style={thStyle}>Created</th>
+                  <th style={{ ...thStyle, textAlign: 'right' }}>Actions</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {users.map((u, idx) => (
+                  <tr key={u.id} style={{ background: idx % 2 === 0 ? '#fff' : '#FAFAFA' }}>
+                    <td style={{ ...tdStyle, fontWeight: 600, color: '#111827' }}>{u.name}</td>
+                    <td style={{ ...tdStyle, color: '#374151' }}>{u.email}</td>
+                    <td style={{ ...tdStyle, textAlign: 'center' }}><RoleBadge role={u.role} /></td>
+                    <td style={{ ...tdStyle, textAlign: 'center' }}><StatusBadge isActive={u.isActive} /></td>
+                    <td style={{ ...tdStyle, fontSize: '0.8rem', color: '#6B7280' }}>{fmtDate(u.createdAt)}</td>
+                    <td style={{ ...tdStyle, textAlign: 'right' }}>
+                      <ActionButtons u={u} onEdit={() => setModal({ mode: 'edit', user: u })} onReset={() => setModal({ mode: 'reset', user: u })} />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* ── Mobile / Tablet Card Stack ── */}
+          <div className="um-card-stack">
+            {users.map(u => (
+              <div key={u.id} style={{ ...card, padding: '1rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.5rem' }}>
+                  <div>
+                    <p style={{ margin: 0, fontWeight: 700, color: '#111827', fontSize: '0.95rem' }}>{u.name}</p>
+                    <p style={{ margin: '2px 0 0', color: '#6B7280', fontSize: '0.8rem' }}>{u.email}</p>
+                  </div>
+                  <StatusBadge isActive={u.isActive} />
+                </div>
+                <div style={{ display: 'flex', gap: '6px', marginBottom: '0.75rem', flexWrap: 'wrap' }}>
+                  <RoleBadge role={u.role} />
+                </div>
+                <div style={{ display: 'flex', gap: '6px' }}>
+                  <ActionButtons u={u} onEdit={() => setModal({ mode: 'edit', user: u })} onReset={() => setModal({ mode: 'reset', user: u })} />
+                </div>
+              </div>
+            ))}
+          </div>
+        </>
       )}
 
       {/* Modal */}
@@ -383,6 +442,7 @@ const UserManagement: React.FC = () => {
         <UserModal
           mode={modal.mode}
           user={modal.user}
+          currentUserId={currentUser?.id}
           onClose={() => setModal(null)}
           onSaved={fetchUsers}
         />
@@ -390,5 +450,36 @@ const UserManagement: React.FC = () => {
     </div>
   );
 };
+
+// ── Shared sub-components ─────────────────────────────────────────────────────
+
+const thStyle: React.CSSProperties = {
+  color: 'var(--color-primary)', fontWeight: 600, fontSize: '0.78rem',
+  padding: '11px 14px', textAlign: 'left',
+  borderBottom: '1px solid #D1FAE5',
+};
+
+const tdStyle: React.CSSProperties = {
+  padding: '12px 14px', fontSize: '0.875rem', borderBottom: '1px solid var(--color-border)',
+};
+
+const ActionButtons: React.FC<{ u: User; onEdit: () => void; onReset: () => void }> = ({ u, onEdit, onReset }) => (
+  <>
+    <button
+      id={`btn-edit-user-${u.id}`}
+      onClick={onEdit}
+      style={{ padding: '4px 12px', borderRadius: '6px', border: '1px solid #D1D5DB', background: '#fff', cursor: 'pointer', fontSize: '0.78rem', fontWeight: 600, color: '#374151' }}
+    >
+      Edit
+    </button>
+    <button
+      id={`btn-reset-password-${u.id}`}
+      onClick={onReset}
+      style={{ padding: '4px 12px', borderRadius: '6px', border: '1px solid #FCD34D', background: '#FFFBEB', cursor: 'pointer', fontSize: '0.78rem', fontWeight: 600, color: '#92400E' }}
+    >
+      Reset PW
+    </button>
+  </>
+);
 
 export default UserManagement;

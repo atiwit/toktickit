@@ -65,9 +65,9 @@ declare global {
 }
 
 // ---------------------------------------------------------------------------
-// Middleware: authenticate — validates JWT cookie → 401 if invalid/missing
+// Middleware: authenticate — validates JWT cookie and verifies user is active in DB (session invalidation)
 // ---------------------------------------------------------------------------
-function authenticate(req: Request, res: Response, next: NextFunction): void {
+async function authenticate(req: Request, res: Response, next: NextFunction): Promise<void> {
   const token = req.cookies?.token;
   if (!token) {
     res.status(401).json({ error: { code: 'UNAUTHENTICATED', message: 'Authentication required' } });
@@ -75,7 +75,24 @@ function authenticate(req: Request, res: Response, next: NextFunction): void {
   }
   try {
     const payload = jwt.verify(token, JWT_SECRET) as JwtPayload;
-    req.user = payload;
+
+    // Verify user exists and is active in database (invalidates session immediately upon deactivation)
+    const user = await prisma.user.findUnique({
+      where: { id: payload.userId },
+      select: { id: true, role: true, isActive: true, mustChangePassword: true },
+    });
+
+    if (!user || !user.isActive) {
+      res.clearCookie('token', { httpOnly: true, sameSite: 'strict' });
+      res.status(401).json({ error: { code: 'UNAUTHENTICATED', message: 'Account is inactive or session has been invalidated' } });
+      return;
+    }
+
+    req.user = {
+      ...payload,
+      role: user.role as Role,
+      mustChangePassword: user.mustChangePassword,
+    };
     next();
   } catch {
     res.status(401).json({ error: { code: 'UNAUTHENTICATED', message: 'Session expired or invalid' } });
@@ -1134,12 +1151,7 @@ app.patch('/api/admin/users/:id', ...adminOnly, async (req: Request, res: Respon
       res.status(400).json({ error: { code: 'VALIDATION_ERROR', fields: errors } }); return;
     }
 
-    // BR-21: Cannot deactivate own account
-    if (isActive === false && userId === req.user!.userId) {
-      res.status(403).json({ error: { code: 'SELF_DEACTIVATION', message: 'You cannot deactivate your own account' } }); return;
-    }
-
-    // BR-22: Last active Administrator protection
+    // BR-22: Last active Administrator protection (evaluated before self-deactivation)
     if ((isActive === false || (role && role !== Role.ADMINISTRATOR)) && existingUser.role === Role.ADMINISTRATOR) {
       const activeAdminCount = await prisma.user.count({
         where: { role: Role.ADMINISTRATOR, isActive: true, id: { not: userId } },
@@ -1147,6 +1159,11 @@ app.patch('/api/admin/users/:id', ...adminOnly, async (req: Request, res: Respon
       if (activeAdminCount === 0) {
         res.status(409).json({ error: { code: 'LAST_ADMIN', message: 'Cannot deactivate or change role of the last active Administrator' } }); return;
       }
+    }
+
+    // BR-21: Cannot deactivate own account (when other active admins exist)
+    if (isActive === false && userId === req.user!.userId) {
+      res.status(403).json({ error: { code: 'SELF_DEACTIVATION', message: 'You cannot deactivate your own account' } }); return;
     }
 
     const updateData: any = {};
