@@ -9,6 +9,36 @@
 import { describe, it, expect, beforeAll } from 'vitest';
 import request from 'supertest';
 import app from '../../src/index';
+import { PrismaClient } from '../../src/generated/prisma/client';
+import bcrypt from 'bcrypt';
+
+const prisma = new PrismaClient();
+
+let validCategoryId = 1;
+let validRelatedSystemId = 1;
+
+beforeAll(async () => {
+  const cat = await prisma.category.findFirst({ select: { id: true } });
+  if (cat) validCategoryId = cat.id;
+  const sys = await prisma.relatedSystem.findFirst({ select: { id: true } });
+  if (sys) validRelatedSystemId = sys.id;
+
+  const hash = await bcrypt.hash('P@ssw0rd1', 10);
+  const userDefs = [
+    { email: REQUESTER_EMAIL, name: 'Alice Johnson', role: 'REQUESTER', mustChangePassword: false },
+    { email: REQUESTER2_EMAIL, name: 'Bob Smith', role: 'REQUESTER', mustChangePassword: false },
+    { email: IT_STAFF_EMAIL, name: 'IT Staff Alpha', role: 'IT_STAFF', mustChangePassword: false },
+    { email: ADMIN_EMAIL, name: 'Admin User', role: 'ADMINISTRATOR', mustChangePassword: false },
+    { email: MUST_CHANGE_EMAIL, name: 'New Hire Staff', role: 'IT_STAFF', mustChangePassword: true },
+  ];
+  for (const u of userDefs) {
+    await prisma.user.upsert({
+      where: { email: u.email },
+      update: { passwordHash: hash, isActive: true, mustChangePassword: u.mustChangePassword, role: u.role as any },
+      create: { email: u.email, name: u.name, passwordHash: hash, isActive: true, mustChangePassword: u.mustChangePassword, role: u.role as any },
+    });
+  }
+});
 
 // ---------------------------------------------------------------------------
 // Test helpers
@@ -52,8 +82,8 @@ describe('AUTH-01: Requester accessing another Requester\'s ticket', () => {
       .post('/api/tickets')
       .set('Cookie', requester1Cookie)
       .send({
-        categoryId: 1,
-        relatedSystemId: 1,
+        categoryId: validCategoryId,
+        relatedSystemId: validRelatedSystemId,
         requestedPriority: 'MEDIUM',
         summary: 'AUTH-01 test ticket',
         description: 'Test ticket for AUTH-01',
@@ -108,8 +138,8 @@ describe('AUTH-03: Requester supplying another requesterId in request body', () 
       .set('Cookie', requesterCookie)
       .send({
         requesterId: 999,             // should be ignored
-        categoryId: 1,
-        relatedSystemId: 1,
+        categoryId: validCategoryId,
+        relatedSystemId: validRelatedSystemId,
         requestedPriority: 'LOW',
         summary: 'AUTH-03 test ticket',
         description: 'Testing that requesterId in body is ignored',

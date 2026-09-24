@@ -88,7 +88,7 @@ function authenticate(req: Request, res: Response, next: NextFunction): void {
 // ---------------------------------------------------------------------------
 function requirePasswordChange(req: Request, res: Response, next: NextFunction): void {
   if (!req.user) { next(); return; }
-  const ALLOWED_PATHS = ['/api/auth/change-password', '/api/auth/logout'];
+  const ALLOWED_PATHS = ['/api/auth/change-password', '/api/auth/logout', '/api/auth/me'];
   if (req.user.mustChangePassword && !ALLOWED_PATHS.includes(req.path)) {
     res.status(403).json({
       error: {
@@ -169,12 +169,20 @@ app.post('/api/auth/login', async (req: Request, res: Response) => {
 
     // Safe response — no info leak on whether email exists (BR-06)
     if (!user || !(await bcrypt.compare(password, user.passwordHash))) {
-      res.status(401).json({ error: { code: 'INVALID_CREDENTIALS', message: 'Invalid email or password' } });
+      res.status(401).json({
+        error: 'Invalid email or password',
+        code: 'INVALID_CREDENTIALS',
+        message: 'Invalid email or password',
+      });
       return;
     }
 
     if (!user.isActive) {
-      res.status(403).json({ error: { code: 'ACCOUNT_INACTIVE', message: 'Your account is inactive. Please contact an administrator.' } });
+      res.status(403).json({
+        error: 'Your account is inactive. Please contact an administrator.',
+        code: 'ACCOUNT_INACTIVE',
+        message: 'Your account is inactive. Please contact an administrator.',
+      });
       return;
     }
 

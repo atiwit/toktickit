@@ -133,12 +133,12 @@ const UserModal: React.FC<UserModalProps> = ({ mode, user, onClose, onSaved }) =
         maxHeight: '90vh', overflowY: 'auto',
       }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
-          <h2 style={{ fontSize: '1.1rem', fontWeight: 700, color: '#111827', margin: 0 }}>{title}</h2>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', color: '#6B7280', cursor: 'pointer', fontSize: '1.25rem', lineHeight: 1 }}>×</button>
+          <h2 id="modal-title" style={{ fontSize: '1.1rem', fontWeight: 700, color: '#111827', margin: 0 }}>{title}</h2>
+          <button id="modal-close-btn" onClick={onClose} style={{ background: 'none', border: 'none', color: '#6B7280', cursor: 'pointer', fontSize: '1.25rem', lineHeight: 1 }}>×</button>
         </div>
 
         {apiError && (
-          <div style={{ background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: '8px', padding: '10px 14px', color: '#B91C1C', fontSize: '0.875rem', marginBottom: '1rem' }}>
+          <div id="modal-api-error" style={{ background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: '8px', padding: '10px 14px', color: '#B91C1C', fontSize: '0.875rem', marginBottom: '1rem' }}>
             {apiError}
           </div>
         )}
@@ -150,13 +150,13 @@ const UserModal: React.FC<UserModalProps> = ({ mode, user, onClose, onSaved }) =
                 <label style={{ fontSize: '0.85rem', fontWeight: 600, color: '#374151', display: 'block', marginBottom: '4px' }}>Full Name</label>
                 <input id="modal-name" type="text" value={name} onChange={e => setName(e.target.value)}
                   style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: `1px solid ${errors.name ? '#EF4444' : '#E5E7EB'}`, boxSizing: 'border-box', fontSize: '0.875rem' }} />
-                {errors.name && <p style={{ color: '#DC2626', fontSize: '0.78rem', margin: '3px 0 0' }}>{errors.name}</p>}
+                {errors.name && <p id="modal-error-name" style={{ color: '#DC2626', fontSize: '0.78rem', margin: '3px 0 0' }}>{errors.name}</p>}
               </div>
               <div style={{ marginBottom: '1rem' }}>
                 <label style={{ fontSize: '0.85rem', fontWeight: 600, color: '#374151', display: 'block', marginBottom: '4px' }}>Email Address</label>
                 <input id="modal-email" type="email" value={email} onChange={e => setEmail(e.target.value)}
                   style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: `1px solid ${errors.email ? '#EF4444' : '#E5E7EB'}`, boxSizing: 'border-box', fontSize: '0.875rem' }} />
-                {errors.email && <p style={{ color: '#DC2626', fontSize: '0.78rem', margin: '3px 0 0' }}>{errors.email}</p>}
+                {errors.email && <p id="modal-error-email" style={{ color: '#DC2626', fontSize: '0.78rem', margin: '3px 0 0' }}>{errors.email}</p>}
               </div>
               <div style={{ marginBottom: '1rem' }}>
                 <label style={{ fontSize: '0.85rem', fontWeight: 600, color: '#374151', display: 'block', marginBottom: '4px' }}>Role</label>
@@ -166,7 +166,7 @@ const UserModal: React.FC<UserModalProps> = ({ mode, user, onClose, onSaved }) =
                   <option value="IT_STAFF">IT Staff</option>
                   <option value="ADMINISTRATOR">Administrator</option>
                 </select>
-                {errors.role && <p style={{ color: '#DC2626', fontSize: '0.78rem', margin: '3px 0 0' }}>{errors.role}</p>}
+                {errors.role && <p id="modal-error-role" style={{ color: '#DC2626', fontSize: '0.78rem', margin: '3px 0 0' }}>{errors.role}</p>}
               </div>
               <div style={{ marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '10px' }}>
                 <input id="modal-active" type="checkbox" checked={isActive} onChange={e => setIsActive(e.target.checked)} style={{ width: '16px', height: '16px', cursor: 'pointer' }} />
@@ -184,19 +184,19 @@ const UserModal: React.FC<UserModalProps> = ({ mode, user, onClose, onSaved }) =
                 <input id="modal-password" type="password" value={password} onChange={e => setPassword(e.target.value)}
                   placeholder="min. 8 chars, uppercase, lowercase, number"
                   style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: `1px solid ${errors.password ? '#EF4444' : '#E5E7EB'}`, boxSizing: 'border-box', fontSize: '0.875rem' }} />
-                {errors.password && <p style={{ color: '#DC2626', fontSize: '0.78rem', margin: '3px 0 0' }}>{errors.password}</p>}
+                {errors.password && <p id="modal-error-password" style={{ color: '#DC2626', fontSize: '0.78rem', margin: '3px 0 0' }}>{errors.password}</p>}
               </div>
               <div style={{ marginBottom: '1.25rem' }}>
                 <label style={{ fontSize: '0.85rem', fontWeight: 600, color: '#374151', display: 'block', marginBottom: '4px' }}>Confirm Password</label>
                 <input id="modal-confirm-password" type="password" value={confirm} onChange={e => setConfirm(e.target.value)}
                   style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: `1px solid ${errors.confirmPassword ? '#EF4444' : '#E5E7EB'}`, boxSizing: 'border-box', fontSize: '0.875rem' }} />
-                {errors.confirmPassword && <p style={{ color: '#DC2626', fontSize: '0.78rem', margin: '3px 0 0' }}>{errors.confirmPassword}</p>}
+                {errors.confirmPassword && <p id="modal-error-confirm-password" style={{ color: '#DC2626', fontSize: '0.78rem', margin: '3px 0 0' }}>{errors.confirmPassword}</p>}
               </div>
             </>
           )}
 
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
-            <button type="button" onClick={onClose}
+            <button id="modal-cancel-btn" type="button" onClick={onClose}
               style={{ padding: '9px 20px', borderRadius: '8px', border: '1px solid #E5E7EB', background: '#fff', cursor: 'pointer', fontSize: '0.875rem', fontWeight: 500 }}>
               Cancel
             </button>
@@ -318,7 +318,7 @@ const UserManagement: React.FC = () => {
         </div>
       ) : (
         <div style={{ ...card, overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+          <table id="users-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead style={{ background: '#EAF6EF' }}>
               <tr>
                 <th style={{ color: '#006B3C', fontWeight: 600, fontSize: '0.78rem', padding: '11px 14px', textAlign: 'left', borderBottom: '1px solid #D1FAE5' }}>Name</th>
@@ -331,7 +331,7 @@ const UserManagement: React.FC = () => {
             </thead>
             <tbody>
               {users.map((u, idx) => (
-                <tr key={u.id} style={{ background: idx % 2 === 0 ? '#fff' : '#FAFAFA' }}>
+                <tr key={u.id} id={`user-row-${u.id}`} data-email={u.email} style={{ background: idx % 2 === 0 ? '#fff' : '#FAFAFA' }}>
                   <td style={{ padding: '12px 14px', fontSize: '0.875rem', color: '#111827', fontWeight: 600, borderBottom: '1px solid #F3F4F6' }}>
                     {u.name}
                   </td>

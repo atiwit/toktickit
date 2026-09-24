@@ -141,19 +141,19 @@
 
 | Test ID | Type | AC | What It Tests | Expected Result | File | Status |
 |---|---|---|---|---|---|---|
-| E2E-01 | E2E | AC-01 | Valid login flow | User redirected to role-appropriate home | `e2e/lab-03/authentication.spec.ts` | ☐ |
-| E2E-02 | E2E | AC-02 | Initial password login and mandatory change | Normal app opens only after valid change | `e2e/lab-03/authentication.spec.ts` | ☐ |
-| E2E-03 | E2E | AC-05 | Invalid login (wrong credentials) | Safe error message shown | `e2e/lab-03/authentication.spec.ts` | ☐ |
-| E2E-04 | E2E | AC-05 | Inactive account login | Safe rejection shown | `e2e/lab-03/authentication.spec.ts` | ☐ |
-| E2E-05 | E2E | AC-06 | Logout and re-access blocked | Redirected to login | `e2e/lab-03/authentication.spec.ts` | ☐ |
-| E2E-06 | E2E | AC-07 | IT Staff opens queue, searches, filters, paginates | Correct data shown | `e2e/lab-03/staff-ticket-flow.spec.ts` | ☐ |
-| E2E-07 | E2E | AC-08, AC-09, AC-10 | IT Staff claims ticket, sets priority, changes status | Updates persisted | `e2e/lab-03/staff-ticket-flow.spec.ts` | ☐ |
-| E2E-08 | E2E | AC-11 | IT Staff posts comment and note | Comment visible to all; note restricted | `e2e/lab-03/staff-ticket-flow.spec.ts` | ☐ |
-| E2E-09 | E2E | AC-16 | Requester indicates problem appears resolved | Indicator set; status unchanged | `e2e/lab-03/staff-ticket-flow.spec.ts` | ☐ |
-| E2E-10 | E2E | AC-12, AC-13, AC-17 | Admin creates user, edits, resets password | User management flow works correctly | `e2e/lab-03/user-administration.spec.ts` | ☐ |
-| E2E-11 | E2E | AC-13 | Admin cannot deactivate self or last admin | Error messages shown | `e2e/lab-03/user-administration.spec.ts` | ☐ |
-| E2E-12 | E2E | AC-14 | Responsive check across breakpoints | No overflow, clipping, or hidden controls | `e2e/lab-03/authentication.spec.ts` | ☐ |
-| E2E-13 | E2E | AC-15 | Requester Lab 2 functions after migration | All ticket operations work | `e2e/lab-03/staff-ticket-flow.spec.ts` | ☐ |
+| E2E-01 | E2E | AC-01 | Valid login flow | User redirected to role-appropriate home | `e2e/lab-03/authentication.spec.ts` | ☑ |
+| E2E-02 | E2E | AC-02 | Initial password login and mandatory change | Normal app opens only after valid change | `e2e/lab-03/authentication.spec.ts` | ☑ |
+| E2E-03 | E2E | AC-05 | Invalid login (wrong credentials) | Safe error message shown | `e2e/lab-03/authentication.spec.ts` | ☑ |
+| E2E-04 | E2E | AC-05 | Inactive account login | Safe rejection shown | `e2e/lab-03/authentication.spec.ts` | ☑ |
+| E2E-05 | E2E | AC-06 | Logout and re-access blocked | Redirected to login | `e2e/lab-03/authentication.spec.ts` | ☑ |
+| E2E-06 | E2E | AC-07 | IT Staff opens queue, searches, filters, paginates | Correct data shown | `e2e/lab-03/staff-ticket-flow.spec.ts` | ☑ |
+| E2E-07 | E2E | AC-08, AC-09, AC-10 | IT Staff claims ticket, sets priority, changes status | Updates persisted | `e2e/lab-03/staff-ticket-flow.spec.ts` | ☑ |
+| E2E-08 | E2E | AC-11 | IT Staff posts comment and note | Comment visible to all; note restricted | `e2e/lab-03/staff-ticket-flow.spec.ts` | ☑ |
+| E2E-09 | E2E | AC-16 | Requester indicates problem appears resolved | Indicator set; status unchanged | `e2e/lab-03/staff-ticket-flow.spec.ts` | ☑ |
+| E2E-10 | E2E | AC-12, AC-13, AC-17 | Admin creates user, edits, resets password | User management flow works correctly | `e2e/lab-03/user-administration.spec.ts` | ☑ |
+| E2E-11 | E2E | AC-13 | Admin cannot deactivate self or last admin | Error messages shown | `e2e/lab-03/user-administration.spec.ts` | ☑ |
+| E2E-12 | E2E | AC-14 | Responsive check across breakpoints | No overflow, clipping, or hidden controls | `e2e/lab-03/authentication.spec.ts` | ☑ |
+| E2E-13 | E2E | AC-15 | Requester Lab 2 functions after migration | All ticket operations work | `e2e/lab-03/staff-ticket-flow.spec.ts` | ☑ |
 
 ---
 

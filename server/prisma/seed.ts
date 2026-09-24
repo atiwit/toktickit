@@ -86,6 +86,18 @@ async function main() {
     console.log(`  ✓ RelatedSystem: ${sys.name} (id=${sys.id})`);
   }
 
+  // --- Clean non-seed records for test idempotency ---
+  console.log('Cleaning non-seed data...');
+  await prisma.internalNote.deleteMany({});
+  await prisma.comment.deleteMany({});
+  await prisma.attachment.deleteMany({});
+  await prisma.ticket.deleteMany({
+    where: { NOT: { ticketNumber: { startsWith: 'TKT-SEED-' } } },
+  });
+  await prisma.user.deleteMany({
+    where: { email: { notIn: USERS.map(u => u.email) } },
+  });
+
   // --- Users ---
   console.log('\nSeeding users...');
   const upsertedUsers: { id: number; name: string; email: string; role: Role; isActive: boolean }[] = [];
@@ -147,7 +159,18 @@ async function main() {
       const ticketNumber = `TKT-SEED-${String(ri * 2 + ti + 1).padStart(4, '0')}`;
       const ticket = await prisma.ticket.upsert({
         where: { ticketNumber },
-        update: {},
+        update: {
+          requesterId: requester.id,
+          ownerId: ownerUser?.id ?? null,
+          categoryId,
+          relatedSystemId,
+          requestedPriority: tmpl.priority,
+          itPriority: tmpl.priority,
+          status: tmpl.status,
+          summary: `[${tmpl.status}] Issue with ${RELATED_SYSTEMS[(ri + ti) % RELATED_SYSTEMS.length]} — ticket ${ri * 2 + ti + 1}`,
+          description: `Detailed description for seeded ticket ${ri * 2 + ti + 1}. Requester: ${requester.name}. Status: ${tmpl.status}. Priority: ${tmpl.priority}.`,
+          requesterIndicatedResolved: false,
+        },
         create: {
           ticketNumber,
           requesterId: requester.id,
@@ -159,7 +182,7 @@ async function main() {
           status: tmpl.status,
           summary: `[${tmpl.status}] Issue with ${RELATED_SYSTEMS[(ri + ti) % RELATED_SYSTEMS.length]} — ticket ${ri * 2 + ti + 1}`,
           description: `Detailed description for seeded ticket ${ri * 2 + ti + 1}. Requester: ${requester.name}. Status: ${tmpl.status}. Priority: ${tmpl.priority}.`,
-          requesterIndicatedResolved: tmpl.status === TicketStatus.IN_PROGRESS && ti === 0,
+          requesterIndicatedResolved: false,
         },
       });
       seededTickets.push({ id: ticket.id, ticketNumber: ticket.ticketNumber });

@@ -1,10 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth, type UserRole } from '../context/AuthContext';
 import { Clock, Eye, EyeOff, Check, AlertCircle } from 'lucide-react';
 
 const ChangePasswordPage: React.FC = () => {
-  const { user, setUser } = useAuth();
+  const { setUser } = useAuth();
   const navigate = useNavigate();
 
   const [currentPassword, setCurrentPassword] = useState('');
