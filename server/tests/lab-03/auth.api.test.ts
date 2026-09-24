@@ -90,7 +90,8 @@ describe('Lab 3: Authentication and Regression Tests', () => {
       .send({ email: 'req1@test.com', password: 'WrongPassword' });
 
     expect(res.status).toBe(401);
-    expect(res.body.error).toBe('Invalid email or password');
+    expect(res.body.error.code).toBe('INVALID_CREDENTIALS');
+    expect(res.body.error.message).toBe('Invalid email or password');
   });
 
   it('API-03: Non-existent email should return 401 with safe message', async () => {
@@ -99,7 +100,8 @@ describe('Lab 3: Authentication and Regression Tests', () => {
       .send({ email: 'nobody@test.com', password: INITIAL_PASSWORD });
 
     expect(res.status).toBe(401);
-    expect(res.body.error).toBe('Invalid email or password');
+    expect(res.body.error.code).toBe('INVALID_CREDENTIALS');
+    expect(res.body.error.message).toBe('Invalid email or password');
   });
 
   it('API-04: Inactive account should return 403', async () => {
@@ -108,7 +110,8 @@ describe('Lab 3: Authentication and Regression Tests', () => {
       .send({ email: 'inactive@test.com', password: INITIAL_PASSWORD });
 
     expect(res.status).toBe(403);
-    expect(res.body.error).toContain('inactive');
+    expect(res.body.error.code).toBe('ACCOUNT_INACTIVE');
+    expect(res.body.error.message).toContain('inactive');
   });
 
   it('API-05 & API-07: Login with mustChangePassword=true, block endpoints, then change password', async () => {
@@ -124,7 +127,8 @@ describe('Lab 3: Authentication and Regression Tests', () => {
       .get('/api/tickets')
       .set('Cookie', cookie);
     expect(protectRes.status).toBe(403);
-    expect(protectRes.body.error?.code ?? protectRes.body.error).toBe('PASSWORD_CHANGE_REQUIRED');
+    expect(protectRes.body.error.code).toBe('PASSWORD_CHANGE_REQUIRED');
+    expect(protectRes.body.error.message).toBe('You must change your password before continuing.');
 
     // 3. Change password
     const changeRes = await request(app)

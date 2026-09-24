@@ -19,7 +19,12 @@ test.describe('User Administration & Safety Controls (AC-12, AC-13, AC-17, AC-06
     await loginUser(page, USERS.admin.email, USERS.admin.password);
     await page.goto(`${BASE_URL}/admin/users`);
     await expect(page.locator('#user-management')).toBeVisible({ timeout: 10_000 });
-    await expect(page.locator('#users-table')).toBeVisible();
+    const isMobile = (page.viewportSize()?.width ?? 1280) <= 768;
+    if (isMobile) {
+      await expect(page.locator('.um-card-stack')).toBeVisible();
+    } else {
+      await expect(page.locator('#users-table')).toBeVisible();
+    }
 
     // Check responsive layout & capture screenshots
     await assertNoHorizontalOverflow(page);
@@ -55,19 +60,21 @@ test.describe('User Administration & Safety Controls (AC-12, AC-13, AC-17, AC-06
     // Modal should close
     await expect(page.locator('#modal-title')).not.toBeVisible({ timeout: 5_000 });
 
-    // Verify user appears in table
-    await expect(page.locator(`text=${newUserEmail}`)).toBeVisible();
+    const listContainer = isMobile ? page.locator('.um-card-stack') : page.locator('#users-table');
+
+    // Verify user appears in table or card stack
+    await expect(listContainer.getByText(newUserEmail)).toBeVisible();
 
     // 3. Search and filter users
     await page.fill('#user-search', newUserEmail);
     await page.waitForTimeout(300);
-    await expect(page.locator(`text=${newUserEmail}`)).toBeVisible();
-    await expect(page.locator(`text=${USERS.requesterAlice.email}`)).not.toBeVisible();
+    await expect(listContainer.getByText(newUserEmail)).toBeVisible();
+    await expect(listContainer.getByText(USERS.requesterAlice.email)).not.toBeVisible();
 
     // Filter by role: IT_STAFF
     await page.selectOption('#user-role-filter', 'IT_STAFF');
     await page.waitForTimeout(300);
-    await expect(page.locator(`text=${newUserEmail}`)).toBeVisible();
+    await expect(listContainer.getByText(newUserEmail)).toBeVisible();
 
     // Clear filters
     await page.fill('#user-search', '');
@@ -75,9 +82,11 @@ test.describe('User Administration & Safety Controls (AC-12, AC-13, AC-17, AC-06
     await page.waitForTimeout(300);
 
     // 4. Edit User: Change name and promote to ADMINISTRATOR (AC-13)
-    const userRow = page.locator(`tr:has-text("${newUserEmail}")`);
-    await expect(userRow).toBeVisible();
-    const editBtn = userRow.locator('button:has-text("Edit")');
+    const userContainer = isMobile
+      ? page.locator('.um-card-stack > div', { hasText: newUserEmail })
+      : page.locator(`tr:has-text("${newUserEmail}")`);
+    await expect(userContainer).toBeVisible();
+    const editBtn = userContainer.locator('button:has-text("Edit")');
     await editBtn.click();
 
     await expect(page.locator('#modal-title')).toContainText('Edit User');
@@ -87,13 +96,15 @@ test.describe('User Administration & Safety Controls (AC-12, AC-13, AC-17, AC-06
     await page.click('#modal-save-btn');
 
     await expect(page.locator('#modal-title')).not.toBeVisible({ timeout: 5_000 });
-    // Verify updated details in table
-    const updatedRow = page.locator(`tr:has-text("${newUserEmail}")`);
-    await expect(updatedRow).toContainText(updatedName);
-    await expect(updatedRow).toContainText('Administrator');
+    // Verify updated details
+    const updatedContainer = isMobile
+      ? page.locator('.um-card-stack > div', { hasText: newUserEmail })
+      : page.locator(`tr:has-text("${newUserEmail}")`);
+    await expect(updatedContainer).toContainText(updatedName);
+    await expect(updatedContainer).toContainText('Administrator');
 
     // 5. Reset Password for User (AC-17)
-    const resetBtn = updatedRow.locator('button:has-text("Reset PW")');
+    const resetBtn = updatedContainer.locator('button:has-text("Reset PW")');
     await resetBtn.click();
 
     await expect(page.locator('#modal-title')).toHaveText('Reset Password');
@@ -159,23 +170,23 @@ test.describe('User Administration & Safety Controls (AC-12, AC-13, AC-17, AC-06
     await page.click('#modal-close-btn');
     await expect(page.locator('#modal-title')).not.toBeVisible();
 
-    // --- Safety Rule 2: Admin cannot deactivate own account (AC-13, BR-21) ---
-    const adminRow = page.locator(`tr:has-text("${USERS.admin.email}")`);
-    await expect(adminRow).toBeVisible();
-    await adminRow.locator('button:has-text("Edit")').click();
+    // --- Safety Rule 2: Admin cannot deactivate own account (AC-13, BR-21, UI-14) ---
+    const isMobileE11 = (page.viewportSize()?.width ?? 1280) <= 768;
+    const adminContainer = isMobileE11
+      ? page.locator('.um-card-stack > div', { hasText: USERS.admin.email })
+      : page.locator(`tr:has-text("${USERS.admin.email}")`);
+    await expect(adminContainer).toBeVisible();
+    await adminContainer.locator('button:has-text("Edit")').click();
 
     await expect(page.locator('#modal-title')).toContainText('Edit User');
-    // Uncheck active account
-    await page.uncheck('#modal-active');
-    await page.click('#modal-save-btn');
-
-    // Expect rejection error: You cannot deactivate your own account
-    await expect(page.locator('#modal-api-error')).toContainText(/cannot deactivate your own account/i, { timeout: 5_000 });
+    // Active checkbox is disabled and explanation text is visible (UI-14, BR-21)
+    await expect(page.locator('#modal-active')).toBeDisabled();
+    await expect(page.locator('text=You cannot deactivate your own account')).toBeVisible();
     await page.click('#modal-close-btn');
     await expect(page.locator('#modal-title')).not.toBeVisible();
 
     // --- Safety Rule 3: Last active Administrator protection (AC-13, BR-22) ---
-    await adminRow.locator('button:has-text("Edit")').click();
+    await adminContainer.locator('button:has-text("Edit")').click();
     await expect(page.locator('#modal-title')).toContainText('Edit User');
     // Attempt to change role away from ADMINISTRATOR to IT_STAFF
     await page.selectOption('#modal-role', 'IT_STAFF');

@@ -51,14 +51,27 @@ const { mockPrismaInstance, inlineTickets } = vi.hoisted(() => {
 
   const mockInstance = {
     user: {
-      findUnique: vi.fn().mockResolvedValue({
-        id: 1,
-        name: 'Test IT Staff',
-        email: 'staff@example.com',
-        role: 'IT_STAFF',
-        isActive: true,
-        mustChangePassword: false,
-        passwordHash: '$2b$10$hashedpassword',
+      findUnique: vi.fn().mockImplementation(async ({ where }: any) => {
+        if (where?.id === 99) {
+          return {
+            id: 99,
+            name: 'Requester User',
+            email: 'req@example.com',
+            role: 'REQUESTER',
+            isActive: true,
+            mustChangePassword: false,
+            passwordHash: '$2b$10$hashedpassword',
+          };
+        }
+        return {
+          id: 1,
+          name: 'Test IT Staff',
+          email: 'staff@example.com',
+          role: 'IT_STAFF',
+          isActive: true,
+          mustChangePassword: false,
+          passwordHash: '$2b$10$hashedpassword',
+        };
       }),
     },
     ticket: {
