@@ -26,6 +26,8 @@ const extractCookie = (res: any) => {
 describe('Lab 3: Authentication and Regression Tests', () => {
   beforeAll(async () => {
     // Clean up existing data for test stability
+    await prisma.internalNote.deleteMany();
+    await prisma.comment.deleteMany();
     await prisma.attachment.deleteMany();
     await prisma.ticket.deleteMany();
     await prisma.user.deleteMany();

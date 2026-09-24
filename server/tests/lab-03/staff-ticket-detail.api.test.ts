@@ -5,7 +5,7 @@ import jwt from 'jsonwebtoken';
 // ---------------------------------------------------------------------------
 // Hoisted mock data
 // ---------------------------------------------------------------------------
-const { mockPrismaInstance, sampleTicket, activeItStaff2, inactiveUser, requesterUser } = vi.hoisted(() => {
+const { mockPrismaInstance, sampleTicket, defaultStaff, activeItStaff2, inactiveUser, requesterUser } = vi.hoisted(() => {
   const sampleTicket = {
     id: 1,
     ticketNumber: 'TKT-20260913-0001',
@@ -26,6 +26,16 @@ const { mockPrismaInstance, sampleTicket, activeItStaff2, inactiveUser, requeste
     requester: { id: 10, name: 'Jane Requester' },
     owner: null,
     attachments: [],
+  };
+
+  const defaultStaff = {
+    id: 1,
+    name: 'Test IT Staff',
+    email: 'staff@example.com',
+    role: 'IT_STAFF',
+    isActive: true,
+    mustChangePassword: false,
+    passwordHash: '$2b$10$hash',
   };
 
   const activeItStaff2 = {
@@ -86,7 +96,7 @@ const { mockPrismaInstance, sampleTicket, activeItStaff2, inactiveUser, requeste
     },
   };
 
-  return { mockPrismaInstance: mockInstance, sampleTicket, activeItStaff2, inactiveUser, requesterUser };
+  return { mockPrismaInstance: mockInstance, sampleTicket, defaultStaff, activeItStaff2, inactiveUser, requesterUser };
 });
 
 vi.mock('../../src/generated/prisma/client', () => ({
@@ -155,6 +165,14 @@ beforeEach(() => {
   mockPrismaInstance.relatedSystem.findMany.mockResolvedValue([]);
   mockPrismaInstance.attachment.findMany.mockResolvedValue([]);
   mockPrismaInstance.attachment.count.mockResolvedValue(0);
+  mockPrismaInstance.user.findUnique.mockImplementation(async ({ where }: any) => {
+    if (where?.id === 1) return defaultStaff;
+    if (where?.id === 3) return activeItStaff2;
+    if (where?.id === 4) return inactiveUser;
+    if (where?.id === 5) return requesterUser;
+    if (where?.id === 99) return { ...requesterUser, id: 99 };
+    return defaultStaff;
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -201,7 +219,6 @@ describe('STAFF-01 — PATCH /api/staff/tickets/:id/owner — claim self', () =>
 describe('STAFF-02 — PATCH /api/staff/tickets/:id/owner — reassign to another IT Staff', () => {
   it('returns 200 and updates owner to target user', async () => {
     mockPrismaInstance.ticket.findUnique.mockResolvedValue(sampleTicket);
-    mockPrismaInstance.user.findUnique.mockResolvedValue(activeItStaff2);
     mockPrismaInstance.ticket.update.mockResolvedValue({
       id: 1,
       owner: { id: 3, name: 'IT Staff B' },
@@ -224,7 +241,6 @@ describe('STAFF-02 — PATCH /api/staff/tickets/:id/owner — reassign to anothe
 describe('STAFF-03 — PATCH /api/staff/tickets/:id/owner — assign to inactive user', () => {
   it('returns 400 when target user is inactive', async () => {
     mockPrismaInstance.ticket.findUnique.mockResolvedValue(sampleTicket);
-    mockPrismaInstance.user.findUnique.mockResolvedValue(inactiveUser);
 
     const res = await request(app)
       .patch('/api/staff/tickets/1/owner')
@@ -243,7 +259,6 @@ describe('STAFF-03 — PATCH /api/staff/tickets/:id/owner — assign to inactive
 describe('STAFF-04 — PATCH /api/staff/tickets/:id/owner — assign to Requester', () => {
   it('returns 400 when target user is a Requester (not IT Staff/Admin)', async () => {
     mockPrismaInstance.ticket.findUnique.mockResolvedValue(sampleTicket);
-    mockPrismaInstance.user.findUnique.mockResolvedValue(requesterUser);
 
     const res = await request(app)
       .patch('/api/staff/tickets/1/owner')

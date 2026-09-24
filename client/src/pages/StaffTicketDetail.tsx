@@ -100,6 +100,16 @@ const StaffTicketDetail: React.FC = () => {
   // Confirmation dialog for destructive transitions (Cancel, Close)
   const [confirmTransition, setConfirmTransition] = useState<string | null>(null);
 
+  // Lock body scroll while confirmation dialog is open
+  useEffect(() => {
+    if (confirmTransition) {
+      document.body.style.overflow = 'hidden';
+      return () => {
+        document.body.style.overflow = '';
+      };
+    }
+  }, [confirmTransition]);
+
   const card: React.CSSProperties = {
     background: '#fff', borderRadius: '10px', border: '1px solid #E5E7EB',
     boxShadow: '0 1px 3px rgba(0,0,0,0.07)', padding: '1.5rem', marginBottom: '1.5rem',
@@ -469,25 +479,50 @@ const StaffTicketDetail: React.FC = () => {
         <div
           id="confirm-transition-overlay"
           style={{
-            position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-            background: 'rgba(0,0,0,0.45)', zIndex: 1000,
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(15, 23, 42, 0.65)',
+            backdropFilter: 'blur(4px)',
+            zIndex: 1000,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '1rem',
           }}
           onClick={() => setConfirmTransition(null)}
         >
           <div
             id="confirm-transition-dialog"
             style={{
-              background: '#fff', borderRadius: '12px', padding: '1.75rem',
-              maxWidth: '420px', width: '90%',
-              boxShadow: '0 8px 32px rgba(0,0,0,0.18)',
+              background: '#ffffff',
+              borderRadius: '16px',
+              padding: '2rem',
+              maxWidth: '440px',
+              width: '100%',
+              boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.25), 0 8px 10px -6px rgba(0, 0, 0, 0.2)',
+              border: '1px solid rgba(229, 231, 235, 0.8)',
             }}
             onClick={e => e.stopPropagation()}
           >
-            <h3 style={{ fontSize: '1.05rem', fontWeight: 700, color: '#111827', margin: '0 0 0.5rem' }}>
-              Confirm: {STATUS_S[confirmTransition]?.label ?? confirmTransition}
+            <div
+              style={{
+                width: '48px',
+                height: '48px',
+                borderRadius: '12px',
+                background: '#FEE2E2',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                marginBottom: '1.25rem',
+                fontSize: '1.5rem',
+              }}
+            >
+              ⚠️
+            </div>
+            <h3 style={{ fontSize: '1.25rem', fontWeight: 700, color: '#111827', margin: '0 0 0.5rem' }}>
+              {confirmTransition === 'CANCELLED' ? 'Cancel Ticket' : 'Close Ticket'}
             </h3>
-            <p style={{ fontSize: '0.875rem', color: '#6B7280', margin: '0 0 1.5rem', lineHeight: 1.6 }}>
+            <p style={{ fontSize: '0.88rem', color: '#4B5563', margin: '0 0 1.5rem', lineHeight: 1.6 }}>
               {confirmTransition === 'CANCELLED'
                 ? 'Are you sure you want to cancel this ticket? Cancelled tickets cannot be re-opened through normal transitions.'
                 : 'Are you sure you want to close this ticket? Closed tickets can be reopened, but this is a significant status change.'}
@@ -497,9 +532,14 @@ const StaffTicketDetail: React.FC = () => {
                 id="btn-confirm-dialog-dismiss"
                 onClick={() => setConfirmTransition(null)}
                 style={{
-                  padding: '8px 18px', borderRadius: '8px', border: '1px solid #D1D5DB',
-                  background: '#fff', color: '#374151', fontWeight: 600,
-                  cursor: 'pointer', fontSize: '0.875rem',
+                  padding: '9px 18px',
+                  borderRadius: '8px',
+                  border: '1px solid #D1D5DB',
+                  background: '#fff',
+                  color: '#374151',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  fontSize: '0.875rem',
                 }}
               >
                 Keep Ticket
@@ -508,9 +548,15 @@ const StaffTicketDetail: React.FC = () => {
                 id="btn-confirm-dialog-proceed"
                 onClick={() => { changeStatus(confirmTransition); setConfirmTransition(null); }}
                 style={{
-                  padding: '8px 18px', borderRadius: '8px', border: 'none',
-                  background: '#DC2626', color: '#fff', fontWeight: 600,
-                  cursor: 'pointer', fontSize: '0.875rem',
+                  padding: '9px 20px',
+                  borderRadius: '8px',
+                  border: 'none',
+                  background: '#DC2626',
+                  color: '#fff',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  fontSize: '0.875rem',
+                  boxShadow: '0 1px 2px rgba(220, 38, 38, 0.3)',
                 }}
               >
                 Yes, {confirmTransition === 'CANCELLED' ? 'Cancel Ticket' : 'Close Ticket'}
