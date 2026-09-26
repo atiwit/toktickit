@@ -1,5 +1,4 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { useRequester } from '../context/RequesterContext';
 import {
   Alert,
   Badge,
@@ -39,7 +38,6 @@ const formatBytes = (bytes: number): string => {
 };
 
 const AttachmentSection: React.FC<AttachmentSectionProps> = ({ ticketId }) => {
-  const { selectedRequester } = useRequester();
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [loading, setLoading] = useState(true);
   const [listError, setListError] = useState<string | null>(null);
@@ -61,11 +59,7 @@ const AttachmentSection: React.FC<AttachmentSectionProps> = ({ ticketId }) => {
     setLoading(true);
     setListError(null);
     try {
-      const headers: Record<string, string> = {};
-      if (selectedRequester) {
-        headers['X-Requester-Id'] = String(selectedRequester.id);
-      }
-      const res = await fetch(`/api/tickets/${ticketId}/attachments`, { headers });
+      const res = await fetch(`/api/tickets/${ticketId}/attachments`, { credentials: 'include' });
       if (!res.ok) throw new Error('Failed to load attachments');
       const data = await res.json();
       setAttachments(data);
@@ -116,15 +110,10 @@ const AttachmentSection: React.FC<AttachmentSectionProps> = ({ ticketId }) => {
       const formData = new FormData();
       formData.append('file', uploadFile);
 
-      const headers: Record<string, string> = {};
-      if (selectedRequester) {
-        headers['X-Requester-Id'] = String(selectedRequester.id);
-      }
-
       const res = await fetch(`/api/tickets/${ticketId}/attachments`, {
         method: 'POST',
         body: formData,
-        headers,
+        credentials: 'include',
       });
       const data = await res.json();
 
@@ -169,14 +158,10 @@ const AttachmentSection: React.FC<AttachmentSectionProps> = ({ ticketId }) => {
     setRemoveError(null);
 
     try {
-      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-      if (selectedRequester) {
-        headers['X-Requester-Id'] = String(selectedRequester.id);
-      }
-
       const res = await fetch(`/api/attachments/${removeTarget.id}`, {
         method: 'DELETE',
-        headers,
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({ reason: removeReason.trim() }),
       });
       const data = await res.json();
@@ -289,7 +274,7 @@ const AttachmentSection: React.FC<AttachmentSectionProps> = ({ ticketId }) => {
                       id={`download-btn-${att.id}`}
                       variant="outline-primary"
                       size="sm"
-                      href={`/api/attachments/${att.id}/download${selectedRequester ? `?requesterId=${selectedRequester.id}` : ''}`}
+                      href={`/api/attachments/${att.id}/download`}
                       as="a"
                       download
                     >

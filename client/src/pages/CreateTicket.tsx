@@ -9,7 +9,7 @@ import {
   Card,
   Badge,
 } from 'react-bootstrap';
-import { useRequester } from '../context/RequesterContext'; 
+import { useAuth } from '../context/AuthContext'; 
 
 interface Category {
   id: number;
@@ -61,7 +61,7 @@ const PRIORITY_BADGE_VARIANT: Record<string, string> = {
 };
 
 const CreateTicket: React.FC = () => {
-  const { selectedRequester } = useRequester();
+  const { user } = useAuth();
 
   // Reference data
   const [categories, setCategories] = useState<Category[]>([]);
@@ -93,8 +93,8 @@ const CreateTicket: React.FC = () => {
       setRefError(null);
       try {
         const [catRes, sysRes] = await Promise.all([
-          fetch('/api/categories'),
-          fetch('/api/related-systems'),
+          fetch('/api/categories', { credentials: 'include' }),
+          fetch('/api/related-systems', { credentials: 'include' }),
         ]);
         if (!catRes.ok || !sysRes.ok) throw new Error('Failed to load reference data');
         const [cats, systems] = await Promise.all([catRes.json(), sysRes.json()]);
@@ -170,8 +170,9 @@ const CreateTicket: React.FC = () => {
       const response = await fetch('/api/tickets', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',  // JWT cookie (BR-03, FR-09)
         body: JSON.stringify({
-          requesterId: selectedRequester!.id,
+          // No requesterId — server derives from JWT (BR-03)
           categoryId: Number(categoryId),
           relatedSystemId: Number(relatedSystemId),
           requestedPriority,
@@ -193,9 +194,30 @@ const CreateTicket: React.FC = () => {
           if (data.fields.description) mapped.description = data.fields.description;
           setFieldErrors(mapped);
         } else {
-          setApiError(data.error ?? 'An unexpected error occurred. Please try again.');
+          setApiError(data.error?.message ?? data.error ?? 'An unexpected error occurred. Please try again.');
         }
         return;
+      }
+
+      // If ticket created successfully and we have an attachment, upload it now
+      if (attachmentFile) {
+        try {
+          const formData = new FormData();
+          formData.append('file', attachmentFile);
+
+          const attachRes = await fetch(`/api/tickets/${data.id}/attachments`, {
+            method: 'POST',
+            credentials: 'include',
+            body: formData,
+          });
+          
+          if (!attachRes.ok) {
+            console.warn('Ticket created, but attachment failed to upload.');
+            // We still show success for ticket creation, but could show a warning
+          }
+        } catch (err) {
+          console.warn('Failed to upload attachment:', err);
+        }
       }
 
       setCreatedTicket(data);
@@ -321,7 +343,7 @@ const CreateTicket: React.FC = () => {
       <div className="create-ticket-header mb-4">
         <h1 className="create-ticket-title">Create New Ticket</h1>
         <p className="create-ticket-sub">
-          Submitting as <strong>{selectedRequester?.name}</strong>
+          Submitting as <strong>{user?.name}</strong>
         </p>
       </div>
 
@@ -553,11 +575,8 @@ const CreateTicket: React.FC = () => {
                 accept=".jpg,.jpeg,.png,.webp,.pdf"
                 onChange={handleFileChange}
                 isInvalid={!!fieldErrors.attachment}
-                aria-describedby={fieldErrors.attachment ? 'error-attachment' : 'hint-attachment'}
+                aria-describedby={fieldErrors.attachment ? 'error-attachment' : undefined}
               />
-              <Form.Text id="hint-attachment" className="text-muted">
-                Attachment upload to ticket will be available after ticket creation (Issue #5).
-              </Form.Text>
               {fieldErrors.attachment && (
                 <Form.Control.Feedback type="invalid" id="error-attachment">
                   {fieldErrors.attachment}
