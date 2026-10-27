@@ -1143,7 +1143,10 @@ function validateActionTakenPayload(
 
   // 3. actionDateTime
   let parsedDateTime: Date | undefined;
-  if (body.actionDateTime !== undefined && body.actionDateTime !== null) {
+  if (body.actionDateTime !== undefined) {
+    if (body.actionDateTime === null || body.actionDateTime === '') {
+      return { error: 'Invalid action date/time' };
+    }
     const d = new Date(body.actionDateTime);
     if (isNaN(d.getTime())) {
       return { error: 'Invalid action date/time' };
@@ -1174,16 +1177,17 @@ function validateActionTakenPayload(
   // 5. attachmentNotes
   let attachmentNotes: string | null | undefined = undefined;
   if (body.attachmentNotes !== undefined) {
-    if (body.attachmentNotes === null || body.attachmentNotes === '') {
+    if (body.attachmentNotes === null) {
       attachmentNotes = null;
     } else {
       if (typeof body.attachmentNotes !== 'string') {
         return { error: 'Attachment notes must be a string' };
       }
-      if (body.attachmentNotes.trim().length > 1000) {
+      const trimmed = body.attachmentNotes.trim();
+      if (trimmed.length > 1000) {
         return { error: 'Attachment notes must be 1000 characters or less' };
       }
-      attachmentNotes = body.attachmentNotes.trim();
+      attachmentNotes = trimmed.length === 0 ? null : trimmed;
     }
   }
 

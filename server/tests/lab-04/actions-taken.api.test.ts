@@ -558,5 +558,53 @@ describe('Lab 4 Actions Taken API Tests (server/tests/lab-04/actions-taken.api.t
 
       expect(mockPrismaInstance.$transaction).toHaveBeenCalledTimes(2);
     });
+
+    it('API-ACT-23: POST returns 400 when attachmentNotes exceeds 1000 characters or is not a string', async () => {
+      const res1 = await request(app)
+        .post('/api/tickets/1/actions-taken')
+        .set('Cookie', staffCookie())
+        .send({
+          actionDescription: 'Testing invalid attachmentNotes',
+          result: 'Failed',
+          attachmentNotes: 99999,
+        });
+
+      expect(res1.status).toBe(400);
+      expect(res1.body.error.code).toBe('VALIDATION_ERROR');
+
+      const res2 = await request(app)
+        .post('/api/tickets/1/actions-taken')
+        .set('Cookie', staffCookie())
+        .send({
+          actionDescription: 'Testing invalid attachmentNotes',
+          result: 'Failed',
+          attachmentNotes: 'a'.repeat(1001),
+        });
+
+      expect(res2.status).toBe(400);
+      expect(res2.body.error.code).toBe('VALIDATION_ERROR');
+    });
+
+    it('API-ACT-24: PATCH returns 400 when actionDateTime is invalid or null/empty', async () => {
+      const res1 = await request(app)
+        .patch('/api/tickets/1/actions-taken/101')
+        .set('Cookie', staffCookie())
+        .send({
+          actionDateTime: 'not-a-valid-date',
+        });
+
+      expect(res1.status).toBe(400);
+      expect(res1.body.error.code).toBe('VALIDATION_ERROR');
+
+      const res2 = await request(app)
+        .patch('/api/tickets/1/actions-taken/101')
+        .set('Cookie', staffCookie())
+        .send({
+          actionDateTime: '',
+        });
+
+      expect(res2.status).toBe(400);
+      expect(res2.body.error.code).toBe('VALIDATION_ERROR');
+    });
   });
 });
