@@ -16,17 +16,17 @@
 ### 2.1. Actions Taken API Tests (`server/tests/lab-04/actions-taken.api.test.ts`)
 | Test ID | Type | AC / Req | What It Tests | Expected Result | Automated Test File | Final Status |
 |---|---|---|---|---|---|:---:|
-| API-ACT-01 | API | AC-01 | Create valid Action Taken by IT Staff | 201 Created; action saved with logged-in user as `performedBy` | `server/tests/lab-04/actions-taken.api.test.ts` | Planned |
-| API-ACT-02 | API | AC-01 | Create Action Taken by Admin | 201 Created; saved successfully | `server/tests/lab-04/actions-taken.api.test.ts` | Planned |
-| API-ACT-03 | API | AC-05 | Create Action Taken by Requester | 403 Forbidden; Requester blocked from write operations | `server/tests/lab-04/actions-taken.api.test.ts` | Planned |
-| API-ACT-04 | API | AC-02 | Create Action with `followUpRequired=true` but missing `followUpNote` | 400 Bad Request; validation error returned | `server/tests/lab-04/actions-taken.api.test.ts` | Planned |
-| API-ACT-05 | API | AC-02 | Create Action with `followUpRequired=true` and valid `followUpNote` | 201 Created; note persisted | `server/tests/lab-04/actions-taken.api.test.ts` | Planned |
-| API-ACT-06 | API | AC-01 | Create Action with empty description or result | 400 Bad Request; validation failure | `server/tests/lab-04/actions-taken.api.test.ts` | Planned |
-| API-ACT-07 | API | AC-05 | Get Actions Taken for owned ticket as Requester | 200 OK; returns list of actions | `server/tests/lab-04/actions-taken.api.test.ts` | Planned |
-| API-ACT-08 | API | AC-05 | Get Actions Taken for another requester's ticket | 403 / 404 Forbidden or Not Found; ownership enforced | `server/tests/lab-04/actions-taken.api.test.ts` | Planned |
-| API-ACT-09 | API | AC-01 | Get Actions Taken as IT Staff | 200 OK; returns full list with user metadata | `server/tests/lab-04/actions-taken.api.test.ts` | Planned |
-| API-ACT-10 | API | AC-01 | Update existing Action Taken as IT Staff | 200 OK; updated fields persisted | `server/tests/lab-04/actions-taken.api.test.ts` | Planned |
-| API-ACT-11 | API | AC-05 | Update existing Action Taken as Requester | 403 Forbidden; write blocked | `server/tests/lab-04/actions-taken.api.test.ts` | Planned |
+| API-ACT-01 | API | AC-01 | Create valid Action Taken by IT Staff | 201 Created; action saved with logged-in user as `performedBy` | `server/tests/lab-04/actions-taken.api.test.ts` | Pass |
+| API-ACT-02 | API | AC-01 | Create Action Taken by Admin | 201 Created; saved successfully | `server/tests/lab-04/actions-taken.api.test.ts` | Pass |
+| API-ACT-03 | API | AC-05 | Create Action Taken by Requester | 403 Forbidden; Requester blocked from write operations | `server/tests/lab-04/actions-taken.api.test.ts` | Pass |
+| API-ACT-04 | API | AC-02 | Create Action with `followUpRequired=true` but missing `followUpNote` | 400 Bad Request; validation error returned | `server/tests/lab-04/actions-taken.api.test.ts` | Pass |
+| API-ACT-05 | API | AC-02 | Create Action with `followUpRequired=true` and valid `followUpNote` | 201 Created; note persisted | `server/tests/lab-04/actions-taken.api.test.ts` | Pass |
+| API-ACT-06 | API | AC-01 | Create Action with empty description or result | 400 Bad Request; validation failure | `server/tests/lab-04/actions-taken.api.test.ts` | Pass |
+| API-ACT-07 | API | AC-05 | Get Actions Taken for owned ticket as Requester | 200 OK; returns list of actions | `server/tests/lab-04/actions-taken.api.test.ts` | Pass |
+| API-ACT-08 | API | AC-05 | Get Actions Taken for another requester's ticket | 403 / 404 Forbidden or Not Found; ownership enforced | `server/tests/lab-04/actions-taken.api.test.ts` | Pass |
+| API-ACT-09 | API | AC-01 | Get Actions Taken as IT Staff | 200 OK; returns full list with user metadata | `server/tests/lab-04/actions-taken.api.test.ts` | Pass |
+| API-ACT-10 | API | AC-01 | Update existing Action Taken as IT Staff | 200 OK; updated fields persisted | `server/tests/lab-04/actions-taken.api.test.ts` | Pass |
+| API-ACT-11 | API | AC-05 | Update existing Action Taken as Requester | 403 Forbidden; write blocked | `server/tests/lab-04/actions-taken.api.test.ts` | Pass |
 
 ---
 
