@@ -473,6 +473,12 @@ app.get('/api/tickets/:id', ...requesterOnly, async (req: Request, res: Response
           orderBy: { uploadedAt: 'asc' },
           select: { id: true, originalFilename: true, mimeType: true, size: true, isRemoved: true, removedReason: true, removedAt: true, uploadedAt: true, ticketId: true },
         },
+        actionsTaken: {
+          orderBy: { actionDateTime: 'asc' },
+          include: {
+            performedBy: { select: { id: true, name: true, role: true } },
+          },
+        },
       },
     });
 
@@ -884,6 +890,12 @@ app.get('/api/staff/tickets/:id', ...staffOnly, async (req: Request, res: Respon
           orderBy: { uploadedAt: 'asc' },
           select: { id: true, originalFilename: true, mimeType: true, size: true, isRemoved: true, removedReason: true, removedAt: true, uploadedAt: true, ticketId: true },
         },
+        actionsTaken: {
+          orderBy: { actionDateTime: 'asc' },
+          include: {
+            performedBy: { select: { id: true, name: true, email: true, role: true } },
+          },
+        },
       },
     });
 
@@ -1064,6 +1076,240 @@ app.get('/api/staff/tickets/:id/notes', ...staffOrAdmin, async (req: Request, re
   } catch (error) {
     console.error('Notes list error:', error);
     res.status(500).json({ error: { code: 'SERVER_ERROR', message: 'Unable to fetch notes' } });
+  }
+});
+
+// ===========================================================================
+// ACTIONS TAKEN ENDPOINTS (Lab 4)
+// ===========================================================================
+
+// POST /api/tickets/:id/actions-taken — create action taken (IT Staff / Admin)
+app.post('/api/tickets/:id/actions-taken', ...staffOrAdmin, async (req: Request, res: Response) => {
+  const ticketId = Number(req.params.id);
+  if (isNaN(ticketId) || !Number.isInteger(ticketId) || ticketId <= 0) {
+    res.status(400).json({ error: { code: 'INVALID_INPUT', message: 'Invalid ticket id' } });
+    return;
+  }
+
+  const { actionDescription, result, actionDateTime, followUpRequired, followUpNote, attachmentNotes } = req.body;
+
+  if (!actionDescription || typeof actionDescription !== 'string' || actionDescription.trim().length === 0) {
+    res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'Action description is required' } });
+    return;
+  }
+  if (actionDescription.trim().length > 2000) {
+    res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'Action description must be 2000 characters or less' } });
+    return;
+  }
+
+  if (!result || typeof result !== 'string' || result.trim().length === 0) {
+    res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'Action result is required' } });
+    return;
+  }
+  if (result.trim().length > 2000) {
+    res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'Action result must be 2000 characters or less' } });
+    return;
+  }
+
+  const isFollowUp = followUpRequired === true || followUpRequired === 'true';
+  if (isFollowUp) {
+    if (!followUpNote || typeof followUpNote !== 'string' || followUpNote.trim().length === 0) {
+      res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'Follow-up note is required when follow-up is requested' } });
+      return;
+    }
+    if (followUpNote.trim().length > 2000) {
+      res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'Follow-up note must be 2000 characters or less' } });
+      return;
+    }
+  }
+
+  if (attachmentNotes && typeof attachmentNotes === 'string' && attachmentNotes.trim().length > 1000) {
+    res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'Attachment notes must be 1000 characters or less' } });
+    return;
+  }
+
+  let parsedDateTime = new Date();
+  if (actionDateTime) {
+    const d = new Date(actionDateTime);
+    if (isNaN(d.getTime())) {
+      res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'Invalid action date/time' } });
+      return;
+    }
+    parsedDateTime = d;
+  }
+
+  try {
+    const ticket = await prisma.ticket.findUnique({ where: { id: ticketId } });
+    if (!ticket) {
+      res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Ticket not found' } });
+      return;
+    }
+
+    const action = await prisma.actionTaken.create({
+      data: {
+        ticketId,
+        actionDateTime: parsedDateTime,
+        actionDescription: actionDescription.trim(),
+        result: result.trim(),
+        performedById: req.user!.userId,
+        followUpRequired: isFollowUp,
+        followUpNote: isFollowUp ? followUpNote.trim() : null,
+        attachmentNotes: attachmentNotes && typeof attachmentNotes === 'string' ? attachmentNotes.trim() : null,
+      },
+      include: {
+        performedBy: {
+          select: { id: true, name: true, email: true, role: true },
+        },
+      },
+    });
+
+    await prisma.ticket.update({
+      where: { id: ticketId },
+      data: { updatedAt: new Date() },
+    });
+
+    res.status(201).json({ action, data: action });
+  } catch (error) {
+    console.error('Create action taken error:', error);
+    res.status(500).json({ error: { code: 'SERVER_ERROR', message: 'Unable to record Action Taken' } });
+  }
+});
+
+// GET /api/tickets/:id/actions-taken — list actions (Requester own ticket / IT Staff / Admin)
+app.get('/api/tickets/:id/actions-taken', ...anyRole, async (req: Request, res: Response) => {
+  const ticketId = Number(req.params.id);
+  if (isNaN(ticketId) || !Number.isInteger(ticketId) || ticketId <= 0) {
+    res.status(400).json({ error: { code: 'INVALID_INPUT', message: 'Invalid ticket id' } });
+    return;
+  }
+
+  try {
+    const ticket = await prisma.ticket.findUnique({ where: { id: ticketId } });
+    if (!ticket) {
+      res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Ticket not found' } });
+      return;
+    }
+
+    if (req.user!.role === Role.REQUESTER && ticket.requesterId !== req.user!.userId) {
+      res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Ticket not found' } });
+      return;
+    }
+
+    const actions = await prisma.actionTaken.findMany({
+      where: { ticketId },
+      orderBy: { actionDateTime: 'asc' },
+      include: {
+        performedBy: {
+          select: { id: true, name: true, email: true, role: true },
+        },
+      },
+    });
+
+    res.status(200).json({ actions, data: actions });
+  } catch (error) {
+    console.error('List actions taken error:', error);
+    res.status(500).json({ error: { code: 'SERVER_ERROR', message: 'Unable to fetch Actions Taken' } });
+  }
+});
+
+// PATCH /api/tickets/:id/actions-taken/:actionId — update action taken (IT Staff / Admin)
+app.patch('/api/tickets/:id/actions-taken/:actionId', ...staffOrAdmin, async (req: Request, res: Response) => {
+  const ticketId = Number(req.params.id);
+  const actionId = Number(req.params.actionId);
+  if (isNaN(ticketId) || isNaN(actionId) || !Number.isInteger(ticketId) || !Number.isInteger(actionId) || ticketId <= 0 || actionId <= 0) {
+    res.status(400).json({ error: { code: 'INVALID_INPUT', message: 'Invalid parameters' } });
+    return;
+  }
+
+  const { actionDescription, result, actionDateTime, followUpRequired, followUpNote, attachmentNotes } = req.body;
+
+  if (actionDescription !== undefined) {
+    if (typeof actionDescription !== 'string' || actionDescription.trim().length === 0) {
+      res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'Action description cannot be empty' } });
+      return;
+    }
+    if (actionDescription.trim().length > 2000) {
+      res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'Action description must be 2000 characters or less' } });
+      return;
+    }
+  }
+
+  if (result !== undefined) {
+    if (typeof result !== 'string' || result.trim().length === 0) {
+      res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'Action result cannot be empty' } });
+      return;
+    }
+    if (result.trim().length > 2000) {
+      res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'Action result must be 2000 characters or less' } });
+      return;
+    }
+  }
+
+  try {
+    const existing = await prisma.actionTaken.findFirst({
+      where: { id: actionId, ticketId },
+    });
+    if (!existing) {
+      res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Action Taken not found' } });
+      return;
+    }
+
+    const isFollowUp = followUpRequired !== undefined
+      ? (followUpRequired === true || followUpRequired === 'true')
+      : existing.followUpRequired;
+    let finalFollowUpNote: string | null = existing.followUpNote;
+
+    if (isFollowUp) {
+      const noteToCheck = followUpNote !== undefined ? followUpNote : existing.followUpNote;
+      if (!noteToCheck || typeof noteToCheck !== 'string' || noteToCheck.trim().length === 0) {
+        res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'Follow-up note is required when follow-up is requested' } });
+        return;
+      }
+      if (noteToCheck.trim().length > 2000) {
+        res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'Follow-up note must be 2000 characters or less' } });
+        return;
+      }
+      finalFollowUpNote = noteToCheck.trim();
+    } else {
+      finalFollowUpNote = null;
+    }
+
+    let parsedDateTime: Date | undefined;
+    if (actionDateTime !== undefined) {
+      const d = new Date(actionDateTime);
+      if (isNaN(d.getTime())) {
+        res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'Invalid action date/time' } });
+        return;
+      }
+      parsedDateTime = d;
+    }
+
+    const updated = await prisma.actionTaken.update({
+      where: { id: actionId },
+      data: {
+        ...(actionDescription !== undefined && { actionDescription: actionDescription.trim() }),
+        ...(result !== undefined && { result: result.trim() }),
+        ...(parsedDateTime && { actionDateTime: parsedDateTime }),
+        followUpRequired: isFollowUp,
+        followUpNote: finalFollowUpNote,
+        ...(attachmentNotes !== undefined && { attachmentNotes: attachmentNotes ? attachmentNotes.trim() : null }),
+      },
+      include: {
+        performedBy: {
+          select: { id: true, name: true, email: true, role: true },
+        },
+      },
+    });
+
+    await prisma.ticket.update({
+      where: { id: ticketId },
+      data: { updatedAt: new Date() },
+    });
+
+    res.status(200).json({ action: updated, data: updated });
+  } catch (error) {
+    console.error('Update action taken error:', error);
+    res.status(500).json({ error: { code: 'SERVER_ERROR', message: 'Unable to update Action Taken' } });
   }
 });
 
