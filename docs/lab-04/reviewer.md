@@ -70,8 +70,8 @@
 
 | PR # | Title | Branch | Status | Link |
 | :--- | :--- | :--- | :---: | :--- |
-| — | docs-preparation for lab4 | `feature/lab4-docs-prepare` | Preparing | — |
-| — | feat(actions): Actions Taken model, migration, seed, and APIs | `feature/lab4-actions-foundation` | Planned | — |
+| #64 | docs-preparation for lab4 | `feature/lab4-docs-prepare` | Merged | [PR #64](https://github.com/atiwit/toktickit/pull/64) |
+| #65 | feat(actions): Actions Taken model, migration, seed, and APIs | `feature/lab4-actions-foundation` | Open (Under Review) | [PR #65](https://github.com/atiwit/toktickit/pull/65) |
 | — | feat(workflow): Ticket workflow, Resolution Gate, and Concurrency | `feature/lab4-ticket-workflow` | Planned | — |
 | — | feat(ui): Actions Taken on Ticket Detail UI | `feature/lab4-actions-ui` | Planned | — |
 | — | feat(dashboard): Role-based dashboard backend APIs | `feature/lab4-dashboards-api` | Planned | — |
@@ -83,10 +83,23 @@
 
 ## Evidence: Partner Reviews & Approvals
 
-*(ส่วนนี้จะบันทึกข้อคิดเห็นและการอนุมัติ (Approval) จาก Peer Reviewers พร้อมคำตอบกลับ เมื่อมีการเปิด PR แต่ละรอบตามขั้นตอน)*
+### PR #64: docs-preparation for lab4 (`feature/lab4-docs-prepare`)
+- **Reviewer:** [@Alongkron1234](https://github.com/Alongkron1234)
+- **Review Summary:** ตรวจสอบเอกสาร Sprint 4 specification, api-spec, ui-spec, tests, reviewer, ai-use ครบถ้วนตาม Requirement
+- **Status:** Approved & Merged into `lab4-staging`
 
-### PR: docs-preparation for lab4 (`feature/lab4-docs-prepare`)
-- **Reviewer:** 
-- **Review Comment:** 
-- **Author Response:** 
-- **Approval Evidence:** 
+---
+
+### PR #65: feat(actions): Actions Taken model, migration, seed, and APIs (`feature/lab4-actions-foundation`)
+- **Reviewer:** [@Alongkron1234](https://github.com/Alongkron1234)
+- **Review Comment:**
+  > "จากที่ดูๆนะครับ PATCH ไม่ validate attachmentNotes: ส่งเกิน 1000 ตัวหรือไม่ใช่ string แล้วได้ 500 แทน 400 ให้แยก validator ใช้ร่วมกับ POST
+  > ไม่ใช้ transaction: actionTaken.create/update กับ ticket.update({ updatedAt }) แยกกัน ถ้าตัวที่สองล้ม action ถูกบันทึกแล้วแต่ client ได้ 500 และกดซ้ำจะเกิดรายการซ้ำ ให้ครอบด้วย prisma.$transaction ลองฝากเช็คอีกทีนะครับ"
+- **Author Response & Resolution:**
+  1. แยก shared validator function `validateActionTakenPayload(body, isUpdate, existing)` สำหรับใช้ร่วมกันทั้ง `POST /api/tickets/:id/actions-taken` และ `PATCH /api/tickets/:id/actions-taken/:actionId`
+  2. เพิ่ม validation ตรวจสอบ `attachmentNotes` หากไม่ใช่ string หรือเกิน 1,000 ตัวอักษร ให้ตอบกลับด้วย HTTP 400 (`VALIDATION_ERROR`) แทนที่จะเกิด Server Error 500 พร้อม normalize ค่า whitespace-only ให้เป็น `null`
+  3. ครอบคำสั่ง `actionTaken.create`/`update` ควบคู่กับ `ticket.update({ updatedAt: new Date() })` ให้อยู่ภายใน `prisma.$transaction([ ... ])` เพื่อให้เป็น Atomic operation ป้องกัน partial write และ duplicate records เมื่อเกิดข้อผิดพลาด
+  4. เพิ่มชุดทดสอบใน `server/tests/lab-04/actions-taken.api.test.ts` (API-ACT-20, API-ACT-21, API-ACT-22, API-ACT-23, API-ACT-24) ทดสอบทั้ง error 400 และการเรียกใช้งาน `$transaction` ซึ่งผ่านทั้งหมด 23/23 tests (รวมทั้งโปรเจกต์ 183/183 tests)
+  5. Push commits แก้ไขไปยัง PR #65 เรียบร้อยแล้ว (commits `d23e205` และ `5843740`)
+- **Status:** Open (รอ Reviewer ตรวจสอบรอบสองและกด Approve)
+
