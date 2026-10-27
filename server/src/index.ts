@@ -1083,6 +1083,123 @@ app.get('/api/staff/tickets/:id/notes', ...staffOrAdmin, async (req: Request, re
 // ACTIONS TAKEN ENDPOINTS (Lab 4)
 // ===========================================================================
 
+interface ValidatedActionInput {
+  actionDescription?: string;
+  result?: string;
+  parsedDateTime?: Date;
+  isFollowUp: boolean;
+  followUpNote?: string | null;
+  attachmentNotes?: string | null;
+}
+
+function validateActionTakenPayload(
+  body: any,
+  isUpdate = false,
+  existing?: { followUpRequired: boolean; followUpNote: string | null }
+): { error: string | null; data?: ValidatedActionInput } {
+  if (!body || typeof body !== 'object') {
+    return { error: 'Invalid request body' };
+  }
+
+  // 1. actionDescription
+  let actionDescription: string | undefined;
+  if (!isUpdate) {
+    if (!body.actionDescription || typeof body.actionDescription !== 'string' || body.actionDescription.trim().length === 0) {
+      return { error: 'Action description is required' };
+    }
+    if (body.actionDescription.trim().length > 2000) {
+      return { error: 'Action description must be 2000 characters or less' };
+    }
+    actionDescription = body.actionDescription.trim();
+  } else if (body.actionDescription !== undefined) {
+    if (typeof body.actionDescription !== 'string' || body.actionDescription.trim().length === 0) {
+      return { error: 'Action description cannot be empty' };
+    }
+    if (body.actionDescription.trim().length > 2000) {
+      return { error: 'Action description must be 2000 characters or less' };
+    }
+    actionDescription = body.actionDescription.trim();
+  }
+
+  // 2. result
+  let result: string | undefined;
+  if (!isUpdate) {
+    if (!body.result || typeof body.result !== 'string' || body.result.trim().length === 0) {
+      return { error: 'Action result is required' };
+    }
+    if (body.result.trim().length > 2000) {
+      return { error: 'Action result must be 2000 characters or less' };
+    }
+    result = body.result.trim();
+  } else if (body.result !== undefined) {
+    if (typeof body.result !== 'string' || body.result.trim().length === 0) {
+      return { error: 'Action result cannot be empty' };
+    }
+    if (body.result.trim().length > 2000) {
+      return { error: 'Action result must be 2000 characters or less' };
+    }
+    result = body.result.trim();
+  }
+
+  // 3. actionDateTime
+  let parsedDateTime: Date | undefined;
+  if (body.actionDateTime !== undefined && body.actionDateTime !== null) {
+    const d = new Date(body.actionDateTime);
+    if (isNaN(d.getTime())) {
+      return { error: 'Invalid action date/time' };
+    }
+    parsedDateTime = d;
+  }
+
+  // 4. followUpRequired & followUpNote
+  const isFollowUp = body.followUpRequired !== undefined
+    ? (body.followUpRequired === true || body.followUpRequired === 'true')
+    : (isUpdate && existing ? existing.followUpRequired : false);
+
+  let finalFollowUpNote: string | null = null;
+  if (isFollowUp) {
+    const noteCandidate = body.followUpNote !== undefined
+      ? body.followUpNote
+      : (isUpdate && existing ? existing.followUpNote : undefined);
+
+    if (!noteCandidate || typeof noteCandidate !== 'string' || noteCandidate.trim().length === 0) {
+      return { error: 'Follow-up note is required when follow-up is requested' };
+    }
+    if (noteCandidate.trim().length > 2000) {
+      return { error: 'Follow-up note must be 2000 characters or less' };
+    }
+    finalFollowUpNote = noteCandidate.trim();
+  }
+
+  // 5. attachmentNotes
+  let attachmentNotes: string | null | undefined = undefined;
+  if (body.attachmentNotes !== undefined) {
+    if (body.attachmentNotes === null || body.attachmentNotes === '') {
+      attachmentNotes = null;
+    } else {
+      if (typeof body.attachmentNotes !== 'string') {
+        return { error: 'Attachment notes must be a string' };
+      }
+      if (body.attachmentNotes.trim().length > 1000) {
+        return { error: 'Attachment notes must be 1000 characters or less' };
+      }
+      attachmentNotes = body.attachmentNotes.trim();
+    }
+  }
+
+  return {
+    error: null,
+    data: {
+      actionDescription,
+      result,
+      parsedDateTime,
+      isFollowUp,
+      followUpNote: finalFollowUpNote,
+      attachmentNotes,
+    },
+  };
+}
+
 // POST /api/tickets/:id/actions-taken — create action taken (IT Staff / Admin)
 app.post('/api/tickets/:id/actions-taken', ...staffOrAdmin, async (req: Request, res: Response) => {
   const ticketId = Number(req.params.id);
@@ -1091,52 +1208,12 @@ app.post('/api/tickets/:id/actions-taken', ...staffOrAdmin, async (req: Request,
     return;
   }
 
-  const { actionDescription, result, actionDateTime, followUpRequired, followUpNote, attachmentNotes } = req.body;
-
-  if (!actionDescription || typeof actionDescription !== 'string' || actionDescription.trim().length === 0) {
-    res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'Action description is required' } });
+  const validation = validateActionTakenPayload(req.body, false);
+  if (validation.error) {
+    res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: validation.error } });
     return;
   }
-  if (actionDescription.trim().length > 2000) {
-    res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'Action description must be 2000 characters or less' } });
-    return;
-  }
-
-  if (!result || typeof result !== 'string' || result.trim().length === 0) {
-    res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'Action result is required' } });
-    return;
-  }
-  if (result.trim().length > 2000) {
-    res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'Action result must be 2000 characters or less' } });
-    return;
-  }
-
-  const isFollowUp = followUpRequired === true || followUpRequired === 'true';
-  if (isFollowUp) {
-    if (!followUpNote || typeof followUpNote !== 'string' || followUpNote.trim().length === 0) {
-      res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'Follow-up note is required when follow-up is requested' } });
-      return;
-    }
-    if (followUpNote.trim().length > 2000) {
-      res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'Follow-up note must be 2000 characters or less' } });
-      return;
-    }
-  }
-
-  if (attachmentNotes && typeof attachmentNotes === 'string' && attachmentNotes.trim().length > 1000) {
-    res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'Attachment notes must be 1000 characters or less' } });
-    return;
-  }
-
-  let parsedDateTime = new Date();
-  if (actionDateTime) {
-    const d = new Date(actionDateTime);
-    if (isNaN(d.getTime())) {
-      res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'Invalid action date/time' } });
-      return;
-    }
-    parsedDateTime = d;
-  }
+  const validated = validation.data!;
 
   try {
     const ticket = await prisma.ticket.findUnique({ where: { id: ticketId } });
@@ -1145,28 +1222,29 @@ app.post('/api/tickets/:id/actions-taken', ...staffOrAdmin, async (req: Request,
       return;
     }
 
-    const action = await prisma.actionTaken.create({
-      data: {
-        ticketId,
-        actionDateTime: parsedDateTime,
-        actionDescription: actionDescription.trim(),
-        result: result.trim(),
-        performedById: req.user!.userId,
-        followUpRequired: isFollowUp,
-        followUpNote: isFollowUp ? followUpNote.trim() : null,
-        attachmentNotes: attachmentNotes && typeof attachmentNotes === 'string' ? attachmentNotes.trim() : null,
-      },
-      include: {
-        performedBy: {
-          select: { id: true, name: true, email: true, role: true },
+    const [action] = await prisma.$transaction([
+      prisma.actionTaken.create({
+        data: {
+          ticketId,
+          actionDateTime: validated.parsedDateTime ?? new Date(),
+          actionDescription: validated.actionDescription!,
+          result: validated.result!,
+          performedById: req.user!.userId,
+          followUpRequired: validated.isFollowUp,
+          followUpNote: validated.isFollowUp ? validated.followUpNote : null,
+          attachmentNotes: validated.attachmentNotes ?? null,
         },
-      },
-    });
-
-    await prisma.ticket.update({
-      where: { id: ticketId },
-      data: { updatedAt: new Date() },
-    });
+        include: {
+          performedBy: {
+            select: { id: true, name: true, email: true, role: true },
+          },
+        },
+      }),
+      prisma.ticket.update({
+        where: { id: ticketId },
+        data: { updatedAt: new Date() },
+      }),
+    ]);
 
     res.status(201).json({ action, data: action });
   } catch (error) {
@@ -1221,30 +1299,6 @@ app.patch('/api/tickets/:id/actions-taken/:actionId', ...staffOrAdmin, async (re
     return;
   }
 
-  const { actionDescription, result, actionDateTime, followUpRequired, followUpNote, attachmentNotes } = req.body;
-
-  if (actionDescription !== undefined) {
-    if (typeof actionDescription !== 'string' || actionDescription.trim().length === 0) {
-      res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'Action description cannot be empty' } });
-      return;
-    }
-    if (actionDescription.trim().length > 2000) {
-      res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'Action description must be 2000 characters or less' } });
-      return;
-    }
-  }
-
-  if (result !== undefined) {
-    if (typeof result !== 'string' || result.trim().length === 0) {
-      res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'Action result cannot be empty' } });
-      return;
-    }
-    if (result.trim().length > 2000) {
-      res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'Action result must be 2000 characters or less' } });
-      return;
-    }
-  }
-
   try {
     const existing = await prisma.actionTaken.findFirst({
       where: { id: actionId, ticketId },
@@ -1254,57 +1308,38 @@ app.patch('/api/tickets/:id/actions-taken/:actionId', ...staffOrAdmin, async (re
       return;
     }
 
-    const isFollowUp = followUpRequired !== undefined
-      ? (followUpRequired === true || followUpRequired === 'true')
-      : existing.followUpRequired;
-    let finalFollowUpNote: string | null = existing.followUpNote;
-
-    if (isFollowUp) {
-      const noteToCheck = followUpNote !== undefined ? followUpNote : existing.followUpNote;
-      if (!noteToCheck || typeof noteToCheck !== 'string' || noteToCheck.trim().length === 0) {
-        res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'Follow-up note is required when follow-up is requested' } });
-        return;
-      }
-      if (noteToCheck.trim().length > 2000) {
-        res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'Follow-up note must be 2000 characters or less' } });
-        return;
-      }
-      finalFollowUpNote = noteToCheck.trim();
-    } else {
-      finalFollowUpNote = null;
+    const validation = validateActionTakenPayload(req.body, true, {
+      followUpRequired: existing.followUpRequired,
+      followUpNote: existing.followUpNote,
+    });
+    if (validation.error) {
+      res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: validation.error } });
+      return;
     }
+    const validated = validation.data!;
 
-    let parsedDateTime: Date | undefined;
-    if (actionDateTime !== undefined) {
-      const d = new Date(actionDateTime);
-      if (isNaN(d.getTime())) {
-        res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'Invalid action date/time' } });
-        return;
-      }
-      parsedDateTime = d;
-    }
-
-    const updated = await prisma.actionTaken.update({
-      where: { id: actionId },
-      data: {
-        ...(actionDescription !== undefined && { actionDescription: actionDescription.trim() }),
-        ...(result !== undefined && { result: result.trim() }),
-        ...(parsedDateTime && { actionDateTime: parsedDateTime }),
-        followUpRequired: isFollowUp,
-        followUpNote: finalFollowUpNote,
-        ...(attachmentNotes !== undefined && { attachmentNotes: attachmentNotes ? attachmentNotes.trim() : null }),
-      },
-      include: {
-        performedBy: {
-          select: { id: true, name: true, email: true, role: true },
+    const [updated] = await prisma.$transaction([
+      prisma.actionTaken.update({
+        where: { id: actionId },
+        data: {
+          ...(validated.actionDescription !== undefined && { actionDescription: validated.actionDescription }),
+          ...(validated.result !== undefined && { result: validated.result }),
+          ...(validated.parsedDateTime !== undefined && { actionDateTime: validated.parsedDateTime }),
+          followUpRequired: validated.isFollowUp,
+          followUpNote: validated.isFollowUp ? validated.followUpNote : null,
+          ...(validated.attachmentNotes !== undefined && { attachmentNotes: validated.attachmentNotes }),
         },
-      },
-    });
-
-    await prisma.ticket.update({
-      where: { id: ticketId },
-      data: { updatedAt: new Date() },
-    });
+        include: {
+          performedBy: {
+            select: { id: true, name: true, email: true, role: true },
+          },
+        },
+      }),
+      prisma.ticket.update({
+        where: { id: ticketId },
+        data: { updatedAt: new Date() },
+      }),
+    ]);
 
     res.status(200).json({ action: updated, data: updated });
   } catch (error) {

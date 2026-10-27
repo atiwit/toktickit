@@ -120,6 +120,15 @@ const { mockPrismaInstance, sampleTicket, sampleAction } = vi.hoisted(() => {
       findFirst: vi.fn().mockResolvedValue(sampleAction),
       update: vi.fn().mockResolvedValue(sampleAction),
     },
+    $transaction: vi.fn().mockImplementation(async (arg: any) => {
+      if (Array.isArray(arg)) {
+        return Promise.all(arg);
+      }
+      if (typeof arg === 'function') {
+        return arg(mockInstance);
+      }
+      return arg;
+    }),
   };
 
   return { mockPrismaInstance: mockInstance, sampleTicket, sampleAction };
@@ -499,6 +508,55 @@ describe('Lab 4 Actions Taken API Tests (server/tests/lab-04/actions-taken.api.t
 
       expect(res.status).toBe(404);
       expect(mockPrismaInstance.actionTaken.update).not.toHaveBeenCalled();
+    });
+
+    it('API-ACT-20: PATCH returns 400 when attachmentNotes is not a string', async () => {
+      const res = await request(app)
+        .patch('/api/tickets/1/actions-taken/101')
+        .set('Cookie', staffCookie())
+        .send({
+          attachmentNotes: 12345, // invalid type
+        });
+
+      expect(res.status).toBe(400);
+      expect(res.body.error.code).toBe('VALIDATION_ERROR');
+      expect(res.body.error.message).toMatch(/must be a string/i);
+    });
+
+    it('API-ACT-21: PATCH returns 400 when attachmentNotes exceeds 1000 characters', async () => {
+      const res = await request(app)
+        .patch('/api/tickets/1/actions-taken/101')
+        .set('Cookie', staffCookie())
+        .send({
+          attachmentNotes: 'x'.repeat(1001),
+        });
+
+      expect(res.status).toBe(400);
+      expect(res.body.error.code).toBe('VALIDATION_ERROR');
+      expect(res.body.error.message).toMatch(/1000 characters or less/i);
+    });
+
+    it('API-ACT-22: POST and PATCH wrap create/update in prisma.$transaction', async () => {
+      expect(mockPrismaInstance.$transaction).toBeDefined();
+
+      await request(app)
+        .post('/api/tickets/1/actions-taken')
+        .set('Cookie', staffCookie())
+        .send({
+          actionDescription: 'Transaction test action',
+          result: 'All good',
+        });
+
+      expect(mockPrismaInstance.$transaction).toHaveBeenCalled();
+
+      await request(app)
+        .patch('/api/tickets/1/actions-taken/101')
+        .set('Cookie', staffCookie())
+        .send({
+          actionDescription: 'Updated in transaction',
+        });
+
+      expect(mockPrismaInstance.$transaction).toHaveBeenCalledTimes(2);
     });
   });
 });
