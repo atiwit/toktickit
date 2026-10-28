@@ -33,13 +33,13 @@
 ### 2.2. Ticket Workflow & Resolution Gate Tests (`server/tests/lab-04/ticket-workflow.api.test.ts`)
 | Test ID | Type | AC / Req | What It Tests | Expected Result | Automated Test File | Final Status |
 |---|---|---|---|---|---|:---:|
-| API-WF-01 | API | AC-03 | Transition to RESOLVED on ticket with 0 Actions Taken | 422 Unprocessable Entity; Resolution Gate blocks update | `server/tests/lab-04/ticket-workflow.api.test.ts` | Planned |
-| API-WF-02 | API | AC-04 | Transition to RESOLVED on ticket with ≥ 1 Action Taken | 200 OK; ticket status updated to RESOLVED | `server/tests/lab-04/ticket-workflow.api.test.ts` | Planned |
-| API-WF-03 | API | BR-11 | Valid transitions (e.g. NEW -> OPEN -> IN_PROGRESS) | 200 OK; follows Permitted Transition Matrix | `server/tests/lab-04/ticket-workflow.api.test.ts` | Planned |
-| API-WF-04 | API | BR-11 | Invalid transitions (e.g. NEW -> CLOSED directly) | 400 Bad Request; disallowed transition | `server/tests/lab-04/ticket-workflow.api.test.ts` | Planned |
-| API-WF-05 | API | BR-10 | Attempt to transition from CANCELLED (Terminal) | 400 Bad Request; terminal status immutable | `server/tests/lab-04/ticket-workflow.api.test.ts` | Planned |
-| API-WF-06 | API | FR-10 | Requester marks Problem Appears Resolved | 200 OK; `requesterIndicatedResolved=true` set, status unchanged | `server/tests/lab-04/ticket-workflow.api.test.ts` | Planned |
-| API-WF-07 | API | AC-09 | Concurrent status update with stale `updatedAt` | 409 Conflict; prevents overwriting recent changes | `server/tests/lab-04/ticket-workflow.api.test.ts` | Planned |
+| API-WF-01 | API | AC-03 | Transition to RESOLVED on ticket with 0 Actions Taken | 422 Unprocessable Entity; Resolution Gate blocks update | `server/tests/lab-04/ticket-workflow.api.test.ts` | Pass |
+| API-WF-02 | API | AC-04 | Transition to RESOLVED on ticket with ≥ 1 Action Taken | 200 OK; ticket status updated to RESOLVED | `server/tests/lab-04/ticket-workflow.api.test.ts` | Pass |
+| API-WF-03 | API | BR-11 | Valid transitions (e.g. NEW -> OPEN -> IN_PROGRESS) | 200 OK; follows Permitted Transition Matrix | `server/tests/lab-04/ticket-workflow.api.test.ts` | Pass |
+| API-WF-04 | API | BR-11 | Invalid transitions (e.g. NEW -> CLOSED directly) | 400 Bad Request; disallowed transition | `server/tests/lab-04/ticket-workflow.api.test.ts` | Pass |
+| API-WF-05 | API | BR-10 | Attempt to transition from CANCELLED (Terminal) | 400 Bad Request; terminal status immutable | `server/tests/lab-04/ticket-workflow.api.test.ts` | Pass |
+| API-WF-06 | API | FR-10 | Requester marks Problem Appears Resolved | 200 OK; `requesterIndicatedResolved=true` set, status unchanged | `server/tests/lab-04/ticket-workflow.api.test.ts` | Pass |
+| API-WF-07 | API | AC-09 | Concurrent status update with stale `updatedAt` | 409 Conflict; prevents overwriting recent changes | `server/tests/lab-04/ticket-workflow.api.test.ts` | Pass |
 
 ---
 
