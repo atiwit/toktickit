@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import ActionsTakenSection, { ActionTaken } from '../components/ActionsTakenSection';
 
 interface StaffTicketDetail {
   id: number;
@@ -94,6 +95,11 @@ const StaffTicketDetail: React.FC = () => {
   const [newNote, setNewNote] = useState('');
   const [postingNote, setPostingNote] = useState(false);
 
+  // Actions Taken & Resolution Gate state
+  const [actions, setActions] = useState<ActionTaken[]>([]);
+  const [openActionModal, setOpenActionModal] = useState(false);
+  const [resolutionGateAlert, setResolutionGateAlert] = useState(false);
+
   // IT Staff operation feedback
   const [opStatus, setOpStatus] = useState<{ type: 'success' | 'error'; msg: string } | null>(null);
 
@@ -124,7 +130,11 @@ const StaffTicketDetail: React.FC = () => {
       if (res.status === 404) { setError('Ticket not found.'); return; }
       if (!res.ok) throw new Error();
       const data = await res.json();
-      setTicket(data.ticket ?? data);
+      const t = data.ticket ?? data;
+      setTicket(t);
+      if (t.actionsTaken && Array.isArray(t.actionsTaken)) {
+        setActions(t.actionsTaken);
+      }
     } catch { setError('Unable to load ticket.'); } finally { setLoading(false); }
   }, [id]);
 
@@ -140,7 +150,21 @@ const StaffTicketDetail: React.FC = () => {
     if (res.ok) { const d = await res.json(); setNotes(d.notes ?? []); }
   }, [id]);
 
-  useEffect(() => { fetchTicket(); fetchComments(); fetchNotes(); }, [fetchTicket, fetchComments, fetchNotes]);
+  const fetchActions = useCallback(async () => {
+    if (!id) return;
+    try {
+      const res = await fetch(`/api/tickets/${id}/actions-taken`, { credentials: 'include' });
+      if (res.ok) {
+        const d = await res.json();
+        const list = Array.isArray(d) ? d : (Array.isArray(d.actions) ? d.actions : (Array.isArray(d.data) ? d.data : []));
+        setActions(list);
+      }
+    } catch {
+      // graceful fallback
+    }
+  }, [id]);
+
+  useEffect(() => { fetchTicket(); fetchComments(); fetchNotes(); fetchActions(); }, [fetchTicket, fetchComments, fetchNotes, fetchActions]);
 
   // ── IT Staff Operations ───────────────────────────────────────────────────
 
@@ -159,14 +183,41 @@ const StaffTicketDetail: React.FC = () => {
   };
 
   const changeStatus = async (newStatus: string) => {
+    setResolutionGateAlert(false);
     const res = await fetch(`/api/staff/tickets/${id}/status`, {
-      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
-      credentials: 'include', body: JSON.stringify({ status: newStatus }),
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({
+        status: newStatus,
+        lastUpdatedAt: ticket?.updatedAt,
+      }),
     });
-    if (res.ok) { fetchTicket(); showOp('success', `Status updated to "${STATUS_S[newStatus]?.label ?? newStatus}"`); }
-    else {
-      const d = await res.json();
-      showOp('error', d.error?.message ?? 'Failed to update status.');
+    if (res.ok) {
+      const result = await res.json();
+      const updatedData = result.data;
+      if (updatedData) {
+        setTicket((prev) => prev ? {
+          ...prev,
+          status: updatedData.status,
+          updatedAt: updatedData.updatedAt ?? prev.updatedAt,
+          permittedStatuses: updatedData.permittedStatuses ?? prev.permittedStatuses,
+        } : prev);
+      }
+      fetchTicket();
+      fetchActions();
+      showOp('success', result.message ?? `Status updated to "${STATUS_S[newStatus]?.label ?? newStatus}"`);
+    } else {
+      const d = await res.json().catch(() => ({}));
+      if (res.status === 422 || d.error?.code === 'RESOLUTION_GATE_BLOCKED') {
+        setResolutionGateAlert(true);
+      } else {
+        if (res.status === 409) {
+          fetchTicket();
+          fetchActions();
+        }
+        showOp('error', d.error?.message ?? 'Failed to update status.');
+      }
     }
   };
 
@@ -329,6 +380,20 @@ const StaffTicketDetail: React.FC = () => {
             )}
           </div>
 
+          {/* Actions Taken */}
+          <ActionsTakenSection
+            ticketId={ticket.id}
+            actions={actions}
+            readOnly={false}
+            onActionSaved={() => {
+              fetchTicket();
+              fetchActions();
+              setResolutionGateAlert(false);
+            }}
+            isOpenModalDirectly={openActionModal}
+            onCloseDirectModal={() => setOpenActionModal(false)}
+          />
+
           {/* Public Comments */}
           <div style={card}>
             <h3 style={{ fontSize: '0.9rem', fontWeight: 700, color: '#006B3C', marginBottom: '0.75rem' }}>Public Comments</h3>
@@ -443,6 +508,80 @@ const StaffTicketDetail: React.FC = () => {
             <p style={{ fontSize: '0.78rem', color: '#6B7280', margin: '0 0 0.75rem' }}>
               Current: <SBadge v={ticket.status} />
             </p>
+
+            {/* Resolution Gate Interception Banner */}
+            {resolutionGateAlert && (
+              <div
+                id="resolution-gate-alert"
+                role="alert"
+                style={{
+                  padding: '12px 14px',
+                  borderRadius: '8px',
+                  marginBottom: '0.75rem',
+                  background: '#FFFBEB',
+                  border: '1px solid #FCD34D',
+                  color: '#92400E',
+                  fontSize: '0.84rem',
+                  lineHeight: 1.45,
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '8px', marginBottom: '8px' }}>
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
+                    <span style={{ fontSize: '1.1rem', lineHeight: 1 }}>⚠️</span>
+                    <div>
+                      <strong style={{ display: 'block', color: '#B45309', marginBottom: '2px' }}>
+                        Cannot Resolve Ticket:
+                      </strong>
+                      <span>
+                        You must record at least one Action Taken describing the solution before marking this ticket as Resolved.
+                      </span>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    aria-label="Dismiss resolution alert"
+                    onClick={() => setResolutionGateAlert(false)}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      color: '#92400E',
+                      cursor: 'pointer',
+                      fontSize: '1rem',
+                      lineHeight: 1,
+                      padding: '2px 4px',
+                    }}
+                  >
+                    ✕
+                  </button>
+                </div>
+                <button
+                  id="btn-resolution-gate-add-action"
+                  type="button"
+                  onClick={() => {
+                    setResolutionGateAlert(false);
+                    setOpenActionModal(true);
+                  }}
+                  style={{
+                    width: '100%',
+                    padding: '7px 12px',
+                    background: '#006B3C',
+                    color: '#ffffff',
+                    border: 'none',
+                    borderRadius: '6px',
+                    fontSize: '0.82rem',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '6px',
+                  }}
+                >
+                  + Add Action Taken Now
+                </button>
+              </div>
+            )}
+
             {ticket.permittedStatuses.length === 0 ? (
               <p style={{ fontSize: '0.8rem', color: '#9CA3AF', fontStyle: 'italic' }}>No status transitions available.</p>
             ) : (
@@ -453,11 +592,15 @@ const StaffTicketDetail: React.FC = () => {
                     <button
                       key={s}
                       id={`btn-status-${s.toLowerCase()}`}
-                      onClick={() =>
-                        (s === 'CANCELLED' || s === 'CLOSED')
-                          ? setConfirmTransition(s)
-                          : changeStatus(s)
-                      }
+                      onClick={() => {
+                        if (s === 'CANCELLED' || s === 'CLOSED') {
+                          setConfirmTransition(s);
+                        } else if (s === 'RESOLVED' && actions.length === 0) {
+                          setResolutionGateAlert(true);
+                        } else {
+                          changeStatus(s);
+                        }
+                      }}
                       style={{
                         padding: '8px 12px', borderRadius: '8px', border: `1px solid ${st.color}`,
                         background: st.bg, color: st.color, fontWeight: 600,

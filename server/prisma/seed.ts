@@ -88,6 +88,7 @@ async function main() {
 
   // --- Clean non-seed records for test idempotency ---
   console.log('Cleaning non-seed data...');
+  await prisma.actionTaken.deleteMany({});
   await prisma.internalNote.deleteMany({});
   await prisma.comment.deleteMany({});
   await prisma.attachment.deleteMany({});
@@ -240,6 +241,58 @@ async function main() {
     } else {
       console.log(`  ↩ Notes already exist for ${t2.ticketNumber}`);
     }
+  }
+
+  // --- Sample Actions Taken (Lab 4) ---
+  console.log('\nSeeding Actions Taken (Lab 4)...');
+  // Seed ticket with 1 action (e.g. ticket at index 4 which is RESOLVED)
+  if (seededTickets.length > 4) {
+    const resolvedTicket = seededTickets[4]; // RESOLVED
+    const staff1 = staffList[0];
+    await prisma.actionTaken.create({
+      data: {
+        ticketId: resolvedTicket.id,
+        actionDateTime: new Date(Date.now() - 3600000 * 5),
+        actionDescription: 'Replaced damaged display cable and ran video stress tests for 30 minutes.',
+        result: 'Display works at native resolution 60Hz without flickering or color distortion.',
+        performedById: staff1.id,
+        followUpRequired: false,
+        attachmentNotes: 'display-test-report.pdf',
+      },
+    });
+    console.log(`  ✓ Added 1 action taken to ${resolvedTicket.ticketNumber} (RESOLVED)`);
+  }
+
+  // Seed ticket with multiple actions by DIFFERENT staff members (BR-02)
+  if (seededTickets.length > 2) {
+    const inProgressTicket = seededTickets[2]; // IN_PROGRESS
+    const staffAlpha = staffList[0];
+    const staffBeta = staffList[1 % staffList.length];
+
+    await prisma.actionTaken.create({
+      data: {
+        ticketId: inProgressTicket.id,
+        actionDateTime: new Date(Date.now() - 3600000 * 24),
+        actionDescription: 'Initial triage: confirmed intermittent network drop on Ethernet port 4.',
+        result: 'Duplicated packet drop issue. Port flapped 12 times in 1 hour.',
+        performedById: staffAlpha.id,
+        followUpRequired: true,
+        followUpNote: 'Coordinate with Beta to test patch panel cables on Monday morning.',
+        attachmentNotes: 'port-flap-log.txt',
+      },
+    });
+
+    await prisma.actionTaken.create({
+      data: {
+        ticketId: inProgressTicket.id,
+        actionDateTime: new Date(Date.now() - 3600000 * 2),
+        actionDescription: 'Re-punched patch panel wiring and swapped patch cable with certified Cat6 cable.',
+        result: 'Link negotiated at full 1Gbps duplex without dropped frames.',
+        performedById: staffBeta.id, // Different staff than Alpha (BR-02)
+        followUpRequired: false,
+      },
+    });
+    console.log(`  ✓ Added 2 actions taken to ${inProgressTicket.ticketNumber} by different IT Staff members`);
   }
 
   console.log('\n✅ Seeding complete!');

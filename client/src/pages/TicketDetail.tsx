@@ -2,6 +2,7 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import AttachmentSection from './AttachmentSection';
+import ActionsTakenSection, { ActionTaken } from '../components/ActionsTakenSection';
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -94,6 +95,9 @@ const TicketDetailPage: React.FC = () => {
   const [commentError, setCommentError] = useState<string | null>(null);
   const [postingComment, setPostingComment] = useState(false);
 
+  // Actions Taken (Read-only for Requester)
+  const [actions, setActions] = useState<ActionTaken[]>([]);
+
   // "Problem Appears Resolved"
   const [resolvedLoading, setResolvedLoading] = useState(false);
   const [resolvedConfirm, setResolvedConfirm] = useState(false);
@@ -117,6 +121,9 @@ const TicketDetailPage: React.FC = () => {
       if (!res.ok) throw new Error();
       const data = await res.json();
       setTicket(data);
+      if (data.actionsTaken && Array.isArray(data.actionsTaken)) {
+        setActions(data.actionsTaken);
+      }
     } catch {
       setError('Unable to load ticket. Please try again.');
     } finally {
@@ -138,10 +145,23 @@ const TicketDetailPage: React.FC = () => {
     }
   }, [id]);
 
+  const fetchActions = useCallback(async () => {
+    if (!id) return;
+    try {
+      const res = await fetch(`/api/tickets/${id}/actions-taken`, { credentials: 'include' });
+      if (res.ok) {
+        const data = await res.json();
+        const list = Array.isArray(data) ? data : (Array.isArray(data.actions) ? data.actions : (Array.isArray(data.data) ? data.data : []));
+        setActions(list);
+      }
+    } catch { /**/ }
+  }, [id]);
+
   useEffect(() => {
     fetchTicket();
     fetchComments();
-  }, [fetchTicket, fetchComments]);
+    fetchActions();
+  }, [fetchTicket, fetchComments, fetchActions]);
 
   const handlePostComment = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -322,6 +342,9 @@ const TicketDetailPage: React.FC = () => {
 
           {/* Attachments */}
           <AttachmentSection ticketId={ticket.id} />
+
+          {/* Actions Taken (Read-only) */}
+          <ActionsTakenSection ticketId={ticket.id} actions={actions} readOnly={true} />
 
           {/* Public Comments (FR-11, FR-18) */}
           <div style={card} id="comments-section">
