@@ -790,7 +790,7 @@ const STATUS_TRANSITIONS: Record<TicketStatus, TicketStatus[]> = {
   [TicketStatus.NEW]:                   [TicketStatus.OPEN, TicketStatus.CANCELLED],
   [TicketStatus.OPEN]:                  [TicketStatus.IN_PROGRESS, TicketStatus.CANCELLED],
   [TicketStatus.IN_PROGRESS]:           [TicketStatus.WAITING_FOR_REQUESTER, TicketStatus.RESOLVED, TicketStatus.CANCELLED],
-  [TicketStatus.WAITING_FOR_REQUESTER]: [TicketStatus.IN_PROGRESS],
+  [TicketStatus.WAITING_FOR_REQUESTER]: [TicketStatus.IN_PROGRESS, TicketStatus.RESOLVED, TicketStatus.CANCELLED],
   [TicketStatus.RESOLVED]:              [TicketStatus.CLOSED, TicketStatus.REOPENED],
   [TicketStatus.CLOSED]:                [TicketStatus.REOPENED],
   [TicketStatus.REOPENED]:              [TicketStatus.IN_PROGRESS, TicketStatus.CANCELLED],
@@ -975,8 +975,8 @@ app.patch('/api/staff/tickets/:id/priority', ...staffOnly, async (req: Request, 
   }
 });
 
-// PATCH /api/staff/tickets/:id/status — update status (validates transition matrix)
-app.patch('/api/staff/tickets/:id/status', ...staffOnly, async (req: Request, res: Response) => {
+// PATCH /api/staff/tickets/:id/status — update status (validates transition matrix, resolution gate, and concurrency)
+app.patch('/api/staff/tickets/:id/status', ...staffOrAdmin, async (req: Request, res: Response) => {
   const ticketId = Number(req.params.id);
   if (isNaN(ticketId)) { res.status(400).json({ error: { code: 'INVALID_INPUT', message: 'Invalid ticket id' } }); return; }
 
@@ -989,21 +989,71 @@ app.patch('/api/staff/tickets/:id/status', ...staffOnly, async (req: Request, re
     const ticket = await prisma.ticket.findUnique({ where: { id: ticketId } });
     if (!ticket) { res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Ticket not found' } }); return; }
 
-    const permitted = STATUS_TRANSITIONS[ticket.status];
+    // Concurrency Check (BR-11, AC-09)
+    const concurrencyToken = req.body.lastUpdatedAt ?? req.body.updatedAt;
+    if (concurrencyToken !== undefined && concurrencyToken !== null) {
+      const clientTime = new Date(concurrencyToken).getTime();
+      const dbTime = new Date(ticket.updatedAt).getTime();
+      if (isNaN(clientTime) || clientTime !== dbTime) {
+        res.status(409).json({
+          error: {
+            code: 'CONFLICT',
+            message: 'Ticket has been updated by another user. Please refresh and try again.',
+          },
+          currentTicket: {
+            id: ticket.id,
+            status: ticket.status,
+            updatedAt: ticket.updatedAt,
+          },
+          currentStatus: ticket.status,
+          updatedAt: ticket.updatedAt,
+        });
+        return;
+      }
+    }
+
+    const permitted = STATUS_TRANSITIONS[ticket.status] || [];
     if (!permitted.includes(status as TicketStatus)) {
       res.status(400).json({
         error: { code: 'INVALID_TRANSITION', message: `Cannot transition from ${ticket.status} to ${status}` },
       }); return;
     }
 
+    // Resolution Gate Check (BR-08, FR-09, AC-03, AC-04)
+    if (status === TicketStatus.RESOLVED) {
+      const actionCount = await prisma.actionTaken.count({
+        where: { ticketId },
+      });
+      if (actionCount === 0) {
+        res.status(422).json({
+          error: {
+            code: 'RESOLUTION_GATE_BLOCKED',
+            message: 'Cannot resolve ticket without at least one recorded action taken',
+          },
+        });
+        return;
+      }
+    }
+
     const updated = await prisma.ticket.update({
       where: { id: ticketId },
       data: { status },
-      select: { id: true, status: true },
+      select: { id: true, ticketNumber: true, status: true, updatedAt: true },
     });
 
     const permittedStatuses = STATUS_TRANSITIONS[updated.status as TicketStatus] || [];
-    res.status(200).json({ ticket: { ...updated, permittedStatuses } });
+    res.status(200).json({
+      success: true,
+      message: `Ticket status updated to ${updated.status}`,
+      ticket: { ...updated, permittedStatuses },
+      data: {
+        id: updated.id,
+        ticketNumber: updated.ticketNumber,
+        status: updated.status,
+        updatedAt: updated.updatedAt,
+        permittedStatuses,
+      },
+    });
   } catch (error) {
     console.error('Update status error:', error);
     res.status(500).json({ error: { code: 'SERVER_ERROR', message: 'Unable to update status' } });

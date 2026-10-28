@@ -20,3 +20,11 @@
 > 
 > **Reflection:** ในส่วนของ Issue 2 ได้ออกแบบโมเดล `ActionTaken` เชื่อมโยงกับ Ticket และ User และรัน Prisma migration โดยไม่กระทบข้อมูลเดิม พร้อมเพิ่ม seed data ให้ครอบคลุมตั๋วที่มี 0, 1, และหลาย actions โดยมีกรณีที่เจ้าหน้าที่คนอื่นที่ไม่ใช่ Ticket Owner จากนั้นสร้าง REST APIs สำหรับ CRUD Actions Taken และเขียน Automated Test 18 ข้อ ผ่านทั้งหมด
 
+---
+
+### Prompt 3 : Ticket Workflow, Resolution Gate & Concurrency Handling (Issue #57)
+> **Prompt:** "ทำ Issue3 โดยทำตาม tasks ที่ได้วางแผนไว้และอัพเดทไฟล์เอกสาร reviwer ให้ด้วย"
+> 
+> **Reflection:** ในส่วนของ Issue 3 ได้บังคับใช้กฎ Resolution Gate (BR-08 / FR-09) ที่ฝั่ง backend โดยปฏิเสธการเปลี่ยนสถานะตั๋วเป็น `RESOLVED` ด้วย HTTP 422 Unprocessable Entity หากยังไม่มีรายการ Actions Taken ภายใต้ตั๋ว, อัปเดต Status Transition Matrix (BR-10, BR-11, FR-08) ให้ครอบคลุมทุกสถานะ รวมถึงการเปลี่ยนจาก `WAITING_FOR_REQUESTER` และสถานะสิ้นสุด `CANCELLED` (Terminal State), ตรวจสอบให้แน่ใจว่าการกด "Problem Appears Resolved" ของ Requester เป็นเพียง Advisory Flag ที่บันทึก `requesterIndicatedResolved = true` โดยไม่เปลี่ยนสถานะตั๋วอัตโนมัติ, พร้อมทั้งเพิ่ม Optimistic Concurrency Control (OCC) ตรวจจับความขัดแย้งในการอัปเดตข้อมูลด้วย `lastUpdatedAt` / `updatedAt` และส่ง HTTP 409 Conflict และเขียน Automated API Tests ครอบคลุม 49 เคสทดสอบใน `server/tests/lab-04/ticket-workflow.api.test.ts` ผ่าน 100%
+
+

@@ -71,8 +71,8 @@
 | PR # | Title | Branch | Status | Link |
 | :--- | :--- | :--- | :---: | :--- |
 | #64 | docs-preparation for lab4 | `feature/lab4-docs-prepare` | Merged | [PR #64](https://github.com/atiwit/toktickit/pull/64) |
-| #65 | feat(actions): Actions Taken model, migration, seed, and APIs | `feature/lab4-actions-foundation` | Open (Under Review) | [PR #65](https://github.com/atiwit/toktickit/pull/65) |
-| — | feat(workflow): Ticket workflow, Resolution Gate, and Concurrency | `feature/lab4-ticket-workflow` | Planned | — |
+| #65 | feat(actions): Actions Taken model, migration, seed, and APIs | `feature/lab4-actions-foundation` | Merged | [PR #65](https://github.com/atiwit/toktickit/pull/65) |
+| #66 | feat(workflow): Ticket workflow, Resolution Gate, and Concurrency | `feature/lab4-ticket-workflow` | Open (Under Review) | [PR #66](https://github.com/atiwit/toktickit/pull/66) |
 | — | feat(ui): Actions Taken on Ticket Detail UI | `feature/lab4-actions-ui` | Planned | — |
 | — | feat(dashboard): Role-based dashboard backend APIs | `feature/lab4-dashboards-api` | Planned | — |
 | — | feat(dashboard-ui): Role-based dashboard screens and navigation | `feature/lab4-dashboards-ui` | Planned | — |
@@ -101,5 +101,19 @@
   3. ครอบคำสั่ง `actionTaken.create`/`update` ควบคู่กับ `ticket.update({ updatedAt: new Date() })` ให้อยู่ภายใน `prisma.$transaction([ ... ])` เพื่อให้เป็น Atomic operation ป้องกัน partial write และ duplicate records เมื่อเกิดข้อผิดพลาด
   4. เพิ่มชุดทดสอบใน `server/tests/lab-04/actions-taken.api.test.ts` (API-ACT-20, API-ACT-21, API-ACT-22, API-ACT-23, API-ACT-24) ทดสอบทั้ง error 400 และการเรียกใช้งาน `$transaction` ซึ่งผ่านทั้งหมด 23/23 tests (รวมทั้งโปรเจกต์ 183/183 tests)
   5. Push commits แก้ไขไปยัง PR #65 เรียบร้อยแล้ว (commits `d23e205` และ `5843740`)
-- **Status:** Open (รอ Reviewer ตรวจสอบรอบสองและกด Approve)
+- **Status:** Approved & Merged into `lab4-staging`
+
+---
+
+### PR #66: feat(workflow): Ticket workflow, Resolution Gate, and Concurrency (`feature/lab4-ticket-workflow`)
+- **Reviewer:** [@Alongkron1234](https://github.com/Alongkron1234)
+- **Review Scope & Summary:**
+  1. **Resolution Gate (BR-08, FR-09):** บังคับใช้เงื่อนไขการเปลี่ยนสถานะเป็น `RESOLVED` บน `PATCH /api/staff/tickets/:id/status` โดยตรวจสอบว่ามี `ActionTaken` อย่างน้อย 1 รายการหรือไม่ หากไม่มีจะปฏิเสธด้วย HTTP 422 Unprocessable Entity (`RESOLUTION_GATE_BLOCKED`)
+  2. **Permitted Status Transition Matrix (BR-10, BR-11, FR-08):** รองรับสถานะต้นทางและปลายทางครบทุกสถานะ โดยเปิดให้ `WAITING_FOR_REQUESTER` เปลี่ยนสถานะเป็น `[IN_PROGRESS, RESOLVED, CANCELLED]` และกำหนด `CANCELLED` เป็น Terminal State ที่ไม่สามารถเปลี่ยนสถานะต่อไปได้
+  3. **Advisory Flag (FR-10, BR-09):** การกด "Problem Appears Resolved" ของ Requester (`PATCH /api/tickets/:id/requester-resolved`) บันทึกเฉพาะค่า `requesterIndicatedResolved = true` และไม่เปลี่ยนสถานะตั๋วไปเป็น Resolved โดยอัตโนมัติ
+  4. **Optimistic Concurrency Control (OCC / BR-11, AC-09):** ตรวจสอบ `lastUpdatedAt` หรือ `updatedAt` ใน Request body หากพบว่าเวลาไม่ตรงกับ `ticket.updatedAt` ในฐานข้อมูล จะส่ง HTTP 409 Conflict ป้องกัน Stale Updates
+  5. **Role-Based Authorization:** อนุญาตให้ทั้ง IT Staff และ Administrator เปลี่ยนสถานะตั๋วได้ ขณะที่ Requester หรือผู้ใช้ที่ไม่ได้รับอนุญาตจะถูกปฏิเสธด้วย HTTP 403 Forbidden / 401 Unauthenticated
+  6. **Automated Test Suite:** พัฒนาชุดทดสอบใน `server/tests/lab-04/ticket-workflow.api.test.ts` ครอบคลุมการทดสอบ API-WF-01 ถึง API-WF-07 จำนวน 49 ข้อ ผ่านทั้งหมด 100%
+- **Status:** Open (Under Review)
+
 
