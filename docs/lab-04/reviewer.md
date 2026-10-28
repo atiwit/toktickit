@@ -72,8 +72,7 @@
 | :--- | :--- | :--- | :---: | :--- |
 | #64 | docs-preparation for lab4 | `feature/lab4-docs-prepare` | Merged | [PR #64](https://github.com/atiwit/toktickit/pull/64) |
 | #65 | feat(actions): Actions Taken model, migration, seed, and APIs | `feature/lab4-actions-foundation` | Merged | [PR #65](https://github.com/atiwit/toktickit/pull/65) |
-| #66 | feat(workflow): Ticket workflow, Resolution Gate, and Concurrency | `feature/lab4-ticket-workflow` | Merged | [PR #66](https://github.com/atiwit/toktickit/pull/66) |
-| #67 | feat(ui): Actions Taken on Ticket Detail UI | `feature/lab4-actions-ui` | Ready for Review | — |
+| #69 | feat(ui): Actions Taken on Ticket Detail UI | `feature/lab4-actions-ui` | Ready for Review | [PR #69](https://github.com/atiwit/toktickit/pull/69) |
 | — | feat(dashboard): Role-based dashboard backend APIs | `feature/lab4-dashboards-api` | Planned | — |
 | — | feat(dashboard-ui): Role-based dashboard screens and navigation | `feature/lab4-dashboards-ui` | Planned | — |
 | — | test(e2e): Playwright E2E suites and responsive screenshots | `feature/lab4-e2e-screenshots` | Planned | — |
@@ -126,7 +125,7 @@
 
 ---
 
-### PR #67: feat(ui): Actions Taken on Ticket Detail UI (`feature/lab4-actions-ui`)
+### PR #69: feat(ui): Actions Taken on Ticket Detail UI (`feature/lab4-actions-ui`)
 - **Reviewer:** [@krittaphato3](https://github.com/krittaphato3)
 - **Review Scope & Summary:**
   1. **Actions Taken Section Component (`client/src/components/ActionsTakenSection.tsx`):**
@@ -152,6 +151,7 @@
        - `UI-WF-01`: การแจ้งเตือน Resolution Gate เมื่อพยายาม Resolve ตั๋วที่มี 0 actions, การคลิกปุ่มทางลัด "+ Add Action Taken Now" เพื่อเปิดฟอร์ม, และการยอมรับการเปลี่ยนสถานะเมื่อมี action แล้ว
        - `UI-WF-02`: การจำกัดปุ่มเปลี่ยนสถานะตาม Permitted Transition Matrix และการแสดง Confirmation Dialog สำหรับสถานะที่มีผลกระทบรุนแรง (Cancelled/Closed)
      - ผลการทดสอบผ่านครบ 16/16 tests (100%) และคงความเข้ากันได้ย้อนหลังกับชุดทดสอบของ Lab 1–3
-- **Status:** Ready for Review (Code & Test suites implemented on branch `feature/lab4-actions-ui`, uncommitted per user request)
+- **Status:** Ready for Review (เปิด Pull Request [PR #69](https://github.com/atiwit/toktickit/pull/69) เข้า `lab4-staging` เรียบร้อยในสถานะ Open โดยยังไม่ต้อง Merge เพื่อรอให้ Reviewer ตรวจสอบ)
+
 
 
