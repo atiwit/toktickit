@@ -72,8 +72,7 @@
 | :--- | :--- | :--- | :---: | :--- |
 | #64 | docs-preparation for lab4 | `feature/lab4-docs-prepare` | Merged | [PR #64](https://github.com/atiwit/toktickit/pull/64) |
 | #65 | feat(actions): Actions Taken model, migration, seed, and APIs | `feature/lab4-actions-foundation` | Merged | [PR #65](https://github.com/atiwit/toktickit/pull/65) |
-| #66 | feat(workflow): Ticket workflow, Resolution Gate, and Concurrency | `feature/lab4-ticket-workflow` | Open (Under Review) | [PR #66](https://github.com/atiwit/toktickit/pull/66) |
-| — | feat(ui): Actions Taken on Ticket Detail UI | `feature/lab4-actions-ui` | Planned | — |
+| #69 | feat(ui): Actions Taken on Ticket Detail UI | `feature/lab4-actions-ui` | Ready for Review | [PR #69](https://github.com/atiwit/toktickit/pull/69) |
 | — | feat(dashboard): Role-based dashboard backend APIs | `feature/lab4-dashboards-api` | Planned | — |
 | — | feat(dashboard-ui): Role-based dashboard screens and navigation | `feature/lab4-dashboards-ui` | Planned | — |
 | — | test(e2e): Playwright E2E suites and responsive screenshots | `feature/lab4-e2e-screenshots` | Planned | — |
@@ -122,6 +121,37 @@
   2. คลีนโครงสร้าง JSON Response ของ `PATCH /api/staff/tickets/:id/status` โดยตัดฟิลด์ `ticket` ที่ซ้ำซ้อนออก ให้ตอบกลับเฉพาะ `{ success: true, message: "...", data: { id, ticketNumber, status, updatedAt, permittedStatuses } }` ตามมาตรฐาน API Specification
   3. อัปเดตฝั่ง Frontend ใน `client/src/pages/StaffTicketDetail.tsx` ให้ส่ง `lastUpdatedAt: ticket?.updatedAt` ใน Request body เพื่อเปิดใช้ OCC จากหน้าบ้าน และรองรับโครงสร้าง response แบบ `success`/`data` พร้อมดึงข้อมูลตั๋วใหม่ทันทีเมื่อเกิด 409 Conflict
   4. อัปเดตชุดทดสอบ `server/tests/lab-04/ticket-workflow.api.test.ts` และ `server/tests/lab-03/staff-ticket-detail.api.test.ts` ให้สอดคล้องกับ `updateMany` และโครงสร้าง `data` shape ใหม่ ผ่านครบถ้วน 159/159 tests
-- **Status:** Open (รอ Reviewer ตรวจสอบรอบสองและกด Approve)
+- **Status:** Approved & Merged into `lab4-staging` (Merged in PR #66)
+
+---
+
+### PR #69: feat(ui): Actions Taken on Ticket Detail UI (`feature/lab4-actions-ui`)
+- **Reviewer:** [@krittaphato3](https://github.com/krittaphato3)
+- **Review Scope & Summary:**
+  1. **Actions Taken Section Component (`client/src/components/ActionsTakenSection.tsx`):**
+     - สร้างคอมโพเนนต์ส่วนกลางรองรับทั้งโหมดโต้ตอบสำหรับ IT Staff (`readOnly=false`) และโหมดอ่านอย่างเดียวสำหรับ Requester (`readOnly=true`)
+     - แสดงรายการบันทึกการทำงานพร้อมข้อมูลสำคัญครบถ้วน: วันที่/เวลา (`actionDateTime`), รายละเอียดงาน (`actionDescription`), ผลลัพธ์ (`result`), ชิปผู้ปฏิบัติงานอัตโนมัติ (`performedBy`), ป้ายกำกับ Follow-up Required (⚠️) พร้อมแสดง Follow-up Note, และโน้ตไฟล์แนบ (📎)
+     - แสดง Badge ตัวเลขนับจำนวน Actions Taken ในส่วนหัว และแสดง Empty State เมื่อยังไม่มีรายการ
+     - Modal Dialog (Add / Edit Action Taken) มีการป้องกันการกรอกข้อมูลครบถ้วน: Client-side validation (ตรวจสอบข้อความว่างเปล่าและความยาวไม่เกินกำหนด), ช่อง Performed By แสดงชื่อผู้ใช้ปัจจุบันแบบ disabled, และช่องบันทึก Follow-up Note จะปรากฏขึ้นเฉพาะเมื่อติ๊กเลือก Checkbox Follow-Up Required
+  2. **IT Staff Ticket Detail Integration (`client/src/pages/StaffTicketDetail.tsx`):**
+     - ฝัง `ActionsTakenSection` เข้าสู่คอลัมน์ซ้ายของหน้ารายละเอียดตั๋ว และดึงข้อมูลรายการการทำงานผ่าน `GET /api/tickets/:id/actions-taken`
+     - **Resolution Gate UI Interception (BR-08, FR-09, AC-03):** เมื่อเจ้าหน้าที่กดปุ่ม "→ Resolved" ขณะที่ตั๋วยังไม่มีรายการ Actions Taken (actions count = 0) ระบบจะสกัดกั้นการเปลี่ยนสถานะทันที และแสดง Banner แจ้งเตือน:
+       > ⚠️ **Cannot Resolve Ticket:** You must record at least one Action Taken describing the solution before marking this ticket as Resolved.
+       พร้อมปุ่มทางลัด **"+ Add Action Taken Now"** เพื่อเปิด Modal บันทึก Action Taken ให้เจ้าหน้าที่ทำงานได้ต่อเนื่องทันที
+     - รองรับการดักจับข้อผิดพลาด HTTP 422 `RESOLUTION_GATE_BLOCKED` จาก backend เพื่อแสดงข้อความแจ้งเตือนเดียวกันในกรณีที่เกิด race condition
+  3. **Requester Ticket Detail Integration (`client/src/pages/TicketDetail.tsx`):**
+     - ฝัง `ActionsTakenSection` ในโหมด `readOnly={true}` เพื่อให้ Requester มองเห็นขั้นตอนและผลลัพธ์การแก้ไขปัญหาของเจ้าหน้าที่ได้อย่างโปร่งใส
+     - ซ่อนปุ่ม "+ Add Action Taken" และปุ่ม "Edit" ในฝั่ง Requester โดยสิ้นเชิงเพื่อป้องกันความสับสน
+  4. **Automated Component Test Suites (`client/src/tests/lab-04/`):**
+     - พัฒนาชุดทดสอบ `client/src/tests/lab-04/ActionsTaken.test.tsx` (9 tests) ครอบคลุม:
+       - `UI-ACT-01`: การแสดงผลรายการ Actions Taken บน Staff Detail, การแสดง count badge, การเปิด Add/Edit modal, และชื่อผู้บันทึกอัตโนมัติ
+       - `UI-ACT-02`: การทำงานของ Follow-up Checkbox ในการแสดง/ซ่อนช่อง Follow-up Note, การตรวจสอบ Required Validation, และการส่งข้อมูล POST สำเร็จ
+       - `UI-ACT-03`: การแสดงผลแบบ Read-Only บน Requester Ticket Detail โดยซ่อนปุ่ม Add และ Edit ทั้งหมด
+     - พัฒนาชุดทดสอบ `client/src/tests/lab-04/TicketWorkflow.test.tsx` (7 tests) ครอบคลุม:
+       - `UI-WF-01`: การแจ้งเตือน Resolution Gate เมื่อพยายาม Resolve ตั๋วที่มี 0 actions, การคลิกปุ่มทางลัด "+ Add Action Taken Now" เพื่อเปิดฟอร์ม, และการยอมรับการเปลี่ยนสถานะเมื่อมี action แล้ว
+       - `UI-WF-02`: การจำกัดปุ่มเปลี่ยนสถานะตาม Permitted Transition Matrix และการแสดง Confirmation Dialog สำหรับสถานะที่มีผลกระทบรุนแรง (Cancelled/Closed)
+     - ผลการทดสอบผ่านครบ 16/16 tests (100%) และคงความเข้ากันได้ย้อนหลังกับชุดทดสอบของ Lab 1–3
+- **Status:** Ready for Review (เปิด Pull Request [PR #69](https://github.com/atiwit/toktickit/pull/69) เข้า `lab4-staging` เรียบร้อยในสถานะ Open โดยยังไม่ต้อง Merge เพื่อรอให้ Reviewer ตรวจสอบ)
+
 
 
