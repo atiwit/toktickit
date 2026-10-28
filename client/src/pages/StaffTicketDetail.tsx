@@ -160,12 +160,32 @@ const StaffTicketDetail: React.FC = () => {
 
   const changeStatus = async (newStatus: string) => {
     const res = await fetch(`/api/staff/tickets/${id}/status`, {
-      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
-      credentials: 'include', body: JSON.stringify({ status: newStatus }),
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({
+        status: newStatus,
+        lastUpdatedAt: ticket?.updatedAt,
+      }),
     });
-    if (res.ok) { fetchTicket(); showOp('success', `Status updated to "${STATUS_S[newStatus]?.label ?? newStatus}"`); }
-    else {
+    if (res.ok) {
+      const result = await res.json();
+      const updatedData = result.data;
+      if (updatedData) {
+        setTicket((prev) => prev ? {
+          ...prev,
+          status: updatedData.status,
+          updatedAt: updatedData.updatedAt ?? prev.updatedAt,
+          permittedStatuses: updatedData.permittedStatuses ?? prev.permittedStatuses,
+        } : prev);
+      }
+      fetchTicket();
+      showOp('success', result.message ?? `Status updated to "${STATUS_S[newStatus]?.label ?? newStatus}"`);
+    } else {
       const d = await res.json();
+      if (res.status === 409) {
+        fetchTicket();
+      }
       showOp('error', d.error?.message ?? 'Failed to update status.');
     }
   };

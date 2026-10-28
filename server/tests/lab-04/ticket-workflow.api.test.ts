@@ -81,6 +81,7 @@ const { mockPrismaInstance, sampleTicket } = vi.hoisted(() => {
       findFirst: vi.fn().mockResolvedValue(null),
       findMany: vi.fn().mockResolvedValue([sampleTicket]),
       count: vi.fn().mockResolvedValue(1),
+      updateMany: vi.fn().mockResolvedValue({ count: 1 }),
       update: vi.fn().mockImplementation(async ({ data }: any) => ({
         ...sampleTicket,
         ...data,
@@ -172,6 +173,21 @@ describe('Lab 4 Ticket Workflow, Resolution Gate & Concurrency Tests (server/tes
       updatedAt: new Date('2026-10-27T09:00:00Z'),
     };
     mockPrismaInstance.ticket.findUnique.mockImplementation(async () => currentTicketState);
+    mockPrismaInstance.ticket.updateMany.mockImplementation(async ({ where, data }: any) => {
+      if (where?.updatedAt) {
+        const clientTime = new Date(where.updatedAt).getTime();
+        const dbTime = new Date(currentTicketState.updatedAt).getTime();
+        if (clientTime !== dbTime) {
+          return { count: 0 };
+        }
+      }
+      currentTicketState = {
+        ...currentTicketState,
+        ...data,
+        updatedAt: new Date('2026-10-27T10:00:00Z'),
+      };
+      return { count: 1 };
+    });
     mockPrismaInstance.ticket.update.mockImplementation(async ({ data }: any) => {
       currentTicketState = {
         ...currentTicketState,
@@ -241,15 +257,9 @@ describe('Lab 4 Ticket Workflow, Resolution Gate & Concurrency Tests (server/tes
 
       expect(res.status).toBe(200);
       expect(res.body.success).toBe(true);
-      expect(res.body.ticket.status).toBe('RESOLVED');
+      expect(res.body.ticket).toBeUndefined(); // Redundant ticket object cleaned up
       expect(res.body.data.status).toBe('RESOLVED');
-      expect(res.body.ticket.permittedStatuses).toEqual(['CLOSED', 'REOPENED']);
-      expect(mockPrismaInstance.ticket.update).toHaveBeenCalledWith(
-        expect.objectContaining({
-          where: { id: 1 },
-          data: { status: 'RESOLVED' },
-        })
-      );
+      expect(res.body.data.permittedStatuses).toEqual(['CLOSED', 'REOPENED']);
     });
 
     it('allows Administrator to transition to RESOLVED with >= 1 action', async () => {
@@ -265,7 +275,7 @@ describe('Lab 4 Ticket Workflow, Resolution Gate & Concurrency Tests (server/tes
         .send({ status: 'RESOLVED' });
 
       expect(res.status).toBe(200);
-      expect(res.body.ticket.status).toBe('RESOLVED');
+      expect(res.body.data.status).toBe('RESOLVED');
     });
   });
 
@@ -304,8 +314,9 @@ describe('Lab 4 Ticket Workflow, Resolution Gate & Concurrency Tests (server/tes
           .send({ status: to });
 
         expect(res.status).toBe(200);
-        expect(res.body.ticket.status).toBe(to);
-        expect(res.body.ticket).toHaveProperty('permittedStatuses');
+        expect(res.body.data.status).toBe(to);
+        expect(res.body.data).toHaveProperty('permittedStatuses');
+        expect(res.body.ticket).toBeUndefined();
       });
     }
   });
@@ -505,11 +516,11 @@ describe('Lab 4 Ticket Workflow, Resolution Gate & Concurrency Tests (server/tes
     });
 
     it('succeeds with 200 OK when lastUpdatedAt matches ticket.updatedAt', async () => {
-      mockPrismaInstance.ticket.findUnique.mockResolvedValue({
+      currentTicketState = {
         ...sampleTicket,
         status: 'OPEN',
         updatedAt: dbUpdatedAt,
-      });
+      };
 
       const res = await request(app)
         .patch('/api/staff/tickets/1/status')
@@ -520,16 +531,26 @@ describe('Lab 4 Ticket Workflow, Resolution Gate & Concurrency Tests (server/tes
         });
 
       expect(res.status).toBe(200);
-      expect(res.body.ticket.status).toBe('IN_PROGRESS');
-      expect(mockPrismaInstance.ticket.update).toHaveBeenCalled();
+      expect(res.body.data.status).toBe('IN_PROGRESS');
+      expect(mockPrismaInstance.ticket.updateMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            id: 1,
+            updatedAt: expect.any(Date),
+          }),
+          data: expect.objectContaining({
+            status: 'IN_PROGRESS',
+          }),
+        })
+      );
     });
 
     it('succeeds when no concurrency token is provided (backward compatibility)', async () => {
-      mockPrismaInstance.ticket.findUnique.mockResolvedValue({
+      currentTicketState = {
         ...sampleTicket,
         status: 'OPEN',
         updatedAt: dbUpdatedAt,
-      });
+      };
 
       const res = await request(app)
         .patch('/api/staff/tickets/1/status')
@@ -537,7 +558,8 @@ describe('Lab 4 Ticket Workflow, Resolution Gate & Concurrency Tests (server/tes
         .send({ status: 'IN_PROGRESS' });
 
       expect(res.status).toBe(200);
-      expect(res.body.ticket.status).toBe('IN_PROGRESS');
+      expect(res.body.data.status).toBe('IN_PROGRESS');
+      expect(mockPrismaInstance.ticket.update).toHaveBeenCalled();
     });
   });
 

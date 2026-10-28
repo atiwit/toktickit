@@ -989,29 +989,7 @@ app.patch('/api/staff/tickets/:id/status', ...staffOrAdmin, async (req: Request,
     const ticket = await prisma.ticket.findUnique({ where: { id: ticketId } });
     if (!ticket) { res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Ticket not found' } }); return; }
 
-    // Concurrency Check (BR-11, AC-09)
-    const concurrencyToken = req.body.lastUpdatedAt ?? req.body.updatedAt;
-    if (concurrencyToken !== undefined && concurrencyToken !== null) {
-      const clientTime = new Date(concurrencyToken).getTime();
-      const dbTime = new Date(ticket.updatedAt).getTime();
-      if (isNaN(clientTime) || clientTime !== dbTime) {
-        res.status(409).json({
-          error: {
-            code: 'CONFLICT',
-            message: 'Ticket has been updated by another user. Please refresh and try again.',
-          },
-          currentTicket: {
-            id: ticket.id,
-            status: ticket.status,
-            updatedAt: ticket.updatedAt,
-          },
-          currentStatus: ticket.status,
-          updatedAt: ticket.updatedAt,
-        });
-        return;
-      }
-    }
-
+    // Status Transition Matrix Check (BR-10, BR-11, FR-08)
     const permitted = STATUS_TRANSITIONS[ticket.status] || [];
     if (!permitted.includes(status as TicketStatus)) {
       res.status(400).json({
@@ -1035,22 +1013,68 @@ app.patch('/api/staff/tickets/:id/status', ...staffOrAdmin, async (req: Request,
       }
     }
 
-    const updated = await prisma.ticket.update({
-      where: { id: ticketId },
-      data: { status },
-      select: { id: true, ticketNumber: true, status: true, updatedAt: true },
-    });
+    // Atomic Optimistic Concurrency Control (OCC) using where clause (BR-11, AC-09)
+    const concurrencyToken = req.body.lastUpdatedAt ?? req.body.updatedAt;
+    let updated: { id: number; ticketNumber: string; status: TicketStatus; updatedAt: Date } | null = null;
 
-    const permittedStatuses = STATUS_TRANSITIONS[updated.status as TicketStatus] || [];
+    if (concurrencyToken !== undefined && concurrencyToken !== null) {
+      const expectedUpdatedAt = new Date(concurrencyToken);
+      if (isNaN(expectedUpdatedAt.getTime())) {
+        res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'Invalid timestamp format for concurrency check' } });
+        return;
+      }
+
+      // Atomic update directly checking updatedAt in where clause to eliminate race condition window
+      const updateResult = await prisma.ticket.updateMany({
+        where: {
+          id: ticketId,
+          updatedAt: expectedUpdatedAt,
+        },
+        data: {
+          status,
+          updatedAt: new Date(),
+        },
+      });
+
+      if (updateResult.count === 0) {
+        const latest = await prisma.ticket.findUnique({ where: { id: ticketId } });
+        res.status(409).json({
+          error: {
+            code: 'CONFLICT',
+            message: 'Ticket has been updated by another user. Please refresh and try again.',
+          },
+          currentTicket: latest ? {
+            id: latest.id,
+            status: latest.status,
+            updatedAt: latest.updatedAt,
+          } : undefined,
+          currentStatus: latest?.status,
+          updatedAt: latest?.updatedAt,
+        });
+        return;
+      }
+
+      updated = await prisma.ticket.findUnique({
+        where: { id: ticketId },
+        select: { id: true, ticketNumber: true, status: true, updatedAt: true },
+      });
+    } else {
+      updated = await prisma.ticket.update({
+        where: { id: ticketId },
+        data: { status, updatedAt: new Date() },
+        select: { id: true, ticketNumber: true, status: true, updatedAt: true },
+      });
+    }
+
+    const permittedStatuses = STATUS_TRANSITIONS[updated!.status as TicketStatus] || [];
     res.status(200).json({
       success: true,
-      message: `Ticket status updated to ${updated.status}`,
-      ticket: { ...updated, permittedStatuses },
+      message: `Ticket status updated to ${updated!.status}`,
       data: {
-        id: updated.id,
-        ticketNumber: updated.ticketNumber,
-        status: updated.status,
-        updatedAt: updated.updatedAt,
+        id: updated!.id,
+        ticketNumber: updated!.ticketNumber,
+        status: updated!.status,
+        updatedAt: updated!.updatedAt,
         permittedStatuses,
       },
     });

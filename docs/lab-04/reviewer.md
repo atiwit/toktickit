@@ -114,6 +114,14 @@
   4. **Optimistic Concurrency Control (OCC / BR-11, AC-09):** ตรวจสอบ `lastUpdatedAt` หรือ `updatedAt` ใน Request body หากพบว่าเวลาไม่ตรงกับ `ticket.updatedAt` ในฐานข้อมูล จะส่ง HTTP 409 Conflict ป้องกัน Stale Updates
   5. **Role-Based Authorization:** อนุญาตให้ทั้ง IT Staff และ Administrator เปลี่ยนสถานะตั๋วได้ ขณะที่ Requester หรือผู้ใช้ที่ไม่ได้รับอนุญาตจะถูกปฏิเสธด้วย HTTP 403 Forbidden / 401 Unauthenticated
   6. **Automated Test Suite:** พัฒนาชุดทดสอบใน `server/tests/lab-04/ticket-workflow.api.test.ts` ครอบคลุมการทดสอบ API-WF-01 ถึง API-WF-07 จำนวน 49 ข้อ ผ่านทั้งหมด 100%
-- **Status:** Open (Under Review)
+- **Review Comment:**
+  > "การทำ OCC ใน index.ts: ตอนนี้การเทียบ timestamp บน JS อาจยังมีช่องว่างเล็ก ๆ ให้เกิด race condition ได้ ถ้าดันการเช็ค updatedAt เข้าไปอยู่ใน where clause ของ Prisma updateMany จะทำให้การทำงานเป็น atomic แบบจริงจังขึ้นครับ
+  > Response & Frontend: ฝากช่วยคลีนตัว ticket object ที่ซ้ำซ้อนใน response ของ status update ออกอีกนิด แล้วก็อย่าลืมอัปเดตฝั่ง frontend ให้รองรับโครงสร้าง success/data shape แบบใหม่ด้วยนะครับ!"
+- **Author Response & Resolution:**
+  1. ปรับปรุงการตรวจสอบ Optimistic Concurrency Control (OCC) ให้เป็น Atomic Operation ที่ระดับฐานข้อมูลอย่างแท้จริง โดยใช้ `prisma.ticket.updateMany({ where: { id: ticketId, updatedAt: expectedUpdatedAt }, data: { status, updatedAt: new Date() } })` ซึ่งดันเงื่อนไข `updatedAt` เข้าไปใน `WHERE` clause โดยตรง หากผลลัพธ์ได้ `count === 0` ระบบจะดึงข้อมูลล่าสุดและตอบกลับด้วย HTTP 409 Conflict ทันที ช่วยปิดช่องว่าง race condition ระหว่าง read และ write ได้ 100%
+  2. คลีนโครงสร้าง JSON Response ของ `PATCH /api/staff/tickets/:id/status` โดยตัดฟิลด์ `ticket` ที่ซ้ำซ้อนออก ให้ตอบกลับเฉพาะ `{ success: true, message: "...", data: { id, ticketNumber, status, updatedAt, permittedStatuses } }` ตามมาตรฐาน API Specification
+  3. อัปเดตฝั่ง Frontend ใน `client/src/pages/StaffTicketDetail.tsx` ให้ส่ง `lastUpdatedAt: ticket?.updatedAt` ใน Request body เพื่อเปิดใช้ OCC จากหน้าบ้าน และรองรับโครงสร้าง response แบบ `success`/`data` พร้อมดึงข้อมูลตั๋วใหม่ทันทีเมื่อเกิด 409 Conflict
+  4. อัปเดตชุดทดสอบ `server/tests/lab-04/ticket-workflow.api.test.ts` และ `server/tests/lab-03/staff-ticket-detail.api.test.ts` ให้สอดคล้องกับ `updateMany` และโครงสร้าง `data` shape ใหม่ ผ่านครบถ้วน 159/159 tests
+- **Status:** Open (รอ Reviewer ตรวจสอบรอบสองและกด Approve)
 
 

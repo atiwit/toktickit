@@ -354,7 +354,8 @@ describe('STAFF-07 — PATCH /api/staff/tickets/:id/status — permitted transit
       .send({ status: 'OPEN' });
 
     expect(res.status).toBe(200);
-    expect(res.body.ticket.status).toBe('OPEN');
+    const result = res.body.data ?? res.body.ticket;
+    expect(result.status).toBe('OPEN');
   });
 
   it('response includes permittedStatuses array', async () => {
@@ -366,8 +367,9 @@ describe('STAFF-07 — PATCH /api/staff/tickets/:id/status — permitted transit
       .set('Cookie', staffCookie())
       .send({ status: 'OPEN' });
 
-    expect(res.body.ticket).toHaveProperty('permittedStatuses');
-    expect(Array.isArray(res.body.ticket.permittedStatuses)).toBe(true);
+    const result = res.body.data ?? res.body.ticket;
+    expect(result).toHaveProperty('permittedStatuses');
+    expect(Array.isArray(result.permittedStatuses)).toBe(true);
   });
 });
 
