@@ -27,4 +27,11 @@
 > 
 > **Reflection:** ในส่วนของ Issue 3 ได้บังคับใช้กฎ Resolution Gate (BR-08 / FR-09) ที่ฝั่ง backend โดยปฏิเสธการเปลี่ยนสถานะตั๋วเป็น `RESOLVED` ด้วย HTTP 422 Unprocessable Entity หากยังไม่มีรายการ Actions Taken ภายใต้ตั๋ว, อัปเดต Status Transition Matrix (BR-10, BR-11, FR-08) ให้ครอบคลุมทุกสถานะ พร้อมทั้งเพิ่ม Optimistic Concurrency Control (OCC) ตรวจจับความขัดแย้งในการอัปเดตข้อมูลด้วย `lastUpdatedAt` / `updatedAt` และส่ง HTTP 409 Conflict และเขียน Automated API Tests ครอบคลุม 49 เคส ผ่าน 100%
 
+---
+
+### Prompt 4 : Actions Taken on Ticket Detail UI & Resolution Gate Interception (Issue #58)
+> **Prompt:** "ทำ Issue4 โดยทำตาม tasks ที่ได้วางแผนไว้และอัพเดทไฟล์เอกสาร reviwer ให้ด้วย"
+> 
+> **Reflection:** ในส่วนของ Issue 4 ได้พัฒนา UI คอมโพเนนต์ `ActionsTakenSection` ตามแบบแผน Zen Green Design System รองรับการแสดงผลทั้งบนหน้าจอ IT Staff (Interactive mode) และหน้าจอ Requester (Read-only mode และเขียน Automated Component Tests ครอบคลุม ผ่าน 100%
+
 

@@ -64,11 +64,11 @@
 | UI-DSH-02 | Component | AC-08 | IT Staff Dashboard metric cards click drill-down | Navigates to queue with appropriate filter query | `client/src/tests/lab-04/StaffDashboard.test.tsx` | Planned |
 | UI-DSH-03 | Component | AC-06 | Render Requester Dashboard with cards & recent tickets | Displays Requester's tickets and status badges | `client/src/tests/lab-04/RequesterDashboard.test.tsx` | Planned |
 | UI-DSH-04 | Component | AC-08 | Requester Dashboard drill-down navigation | Navigates to My Tickets filtered | `client/src/tests/lab-04/RequesterDashboard.test.tsx` | Planned |
-| UI-ACT-01 | Component | AC-01 | Render Actions Taken list on Staff Ticket Detail | Displays date, description, result, actor badge | `client/src/tests/lab-04/ActionsTaken.test.tsx` | Planned |
-| UI-ACT-02 | Component | AC-02 | Follow-up checkbox toggles Follow-up Note input | Dynamic input visibility and required validation | `client/src/tests/lab-04/ActionsTaken.test.tsx` | Planned |
-| UI-ACT-03 | Component | AC-05 | Actions Taken rendered on Requester Ticket Detail | Read-only mode, no Add/Edit buttons rendered | `client/src/tests/lab-04/ActionsTaken.test.tsx` | Planned |
-| UI-WF-01 | Component | AC-03 | Resolution Gate UI alert when resolving without action | Displays clear error and prompts to add action | `client/src/tests/lab-04/TicketWorkflow.test.tsx` | Planned |
-| UI-WF-02 | Component | AC-04 | Status dropdown options restricted by matrix | Only permitted next statuses are selectable | `client/src/tests/lab-04/TicketWorkflow.test.tsx` | Planned |
+| UI-ACT-01 | Component | AC-01 | Render Actions Taken list on Staff Ticket Detail | Displays date, description, result, actor badge | `client/src/tests/lab-04/ActionsTaken.test.tsx` | Pass |
+| UI-ACT-02 | Component | AC-02 | Follow-up checkbox toggles Follow-up Note input | Dynamic input visibility and required validation | `client/src/tests/lab-04/ActionsTaken.test.tsx` | Pass |
+| UI-ACT-03 | Component | AC-05 | Actions Taken rendered on Requester Ticket Detail | Read-only mode, no Add/Edit buttons rendered | `client/src/tests/lab-04/ActionsTaken.test.tsx` | Pass |
+| UI-WF-01 | Component | AC-03 | Resolution Gate UI alert when resolving without action | Displays clear error and prompts to add action | `client/src/tests/lab-04/TicketWorkflow.test.tsx` | Pass |
+| UI-WF-02 | Component | AC-04 | Status dropdown options restricted by matrix | Only permitted next statuses are selectable | `client/src/tests/lab-04/TicketWorkflow.test.tsx` | Pass |
 
 ---
 
