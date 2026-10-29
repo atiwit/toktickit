@@ -411,7 +411,21 @@ app.get('/api/tickets', ...requesterOnly, async (req: Request, res: Response) =>
 
     const where: any = { requesterId };  // always scoped to authenticated user (AC-03)
 
-    if (status && status !== '') where.status = String(status);
+    if (status && status !== '') {
+      if (status === 'open-group') {
+        where.status = {
+          in: [
+            TicketStatus.NEW,
+            TicketStatus.OPEN,
+            TicketStatus.IN_PROGRESS,
+            TicketStatus.WAITING_FOR_REQUESTER,
+            TicketStatus.REOPENED,
+          ],
+        };
+      } else {
+        where.status = String(status);
+      }
+    }
     if (category && category !== '') {
       const catId = parseInt(String(category), 10);
       if (!isNaN(catId)) where.categoryId = catId;
@@ -815,9 +829,9 @@ const STAFF_TICKET_SELECT = {
 };
 
 // GET /api/staff/tickets — IT Staff Ticket Queue
-app.get('/api/staff/tickets', ...staffOnly, async (req: Request, res: Response) => {
+app.get('/api/staff/tickets', ...staffOrAdmin, async (req: Request, res: Response) => {
   try {
-    const { search, status, itPriority, ownerId, sort, page, pageSize } = req.query;
+    const { search, status, itPriority, ownerId, owner, sort, page, pageSize } = req.query;
 
     const VALID_PAGE_SIZES = [10, 25, 50];
     const pageSizeNum = VALID_PAGE_SIZES.includes(Number(pageSize)) ? Number(pageSize) : 10;
@@ -827,12 +841,26 @@ app.get('/api/staff/tickets', ...staffOnly, async (req: Request, res: Response) 
     const where: any = {};
 
     if (status && status !== '') {
-      const statuses = String(status).split(',').filter(s => Object.values(TicketStatus).includes(s as TicketStatus));
-      if (statuses.length > 0) where.status = { in: statuses };
+      if (status === 'open-group') {
+        where.status = {
+          in: [
+            TicketStatus.NEW,
+            TicketStatus.OPEN,
+            TicketStatus.IN_PROGRESS,
+            TicketStatus.WAITING_FOR_REQUESTER,
+            TicketStatus.REOPENED,
+          ],
+        };
+      } else {
+        const statuses = String(status).split(',').filter(s => Object.values(TicketStatus).includes(s as TicketStatus));
+        if (statuses.length > 0) where.status = { in: statuses };
+      }
     }
     if (itPriority && itPriority !== '') where.itPriority = String(itPriority);
     if (ownerId === 'unassigned') where.ownerId = null;
-    else if (ownerId && ownerId !== '') {
+    else if (ownerId === 'me' || owner === 'me') {
+      where.ownerId = req.user!.userId;
+    } else if (ownerId && ownerId !== '') {
       const ownerIdNum = parseInt(String(ownerId), 10);
       if (!isNaN(ownerIdNum)) where.ownerId = ownerIdNum;
     }
@@ -877,7 +905,7 @@ app.get('/api/staff/tickets', ...staffOnly, async (req: Request, res: Response) 
 });
 
 // GET /api/staff/tickets/:id — IT Staff Ticket Detail
-app.get('/api/staff/tickets/:id', ...staffOnly, async (req: Request, res: Response) => {
+app.get('/api/staff/tickets/:id', ...staffOrAdmin, async (req: Request, res: Response) => {
   const ticketId = Number(req.params.id);
   if (isNaN(ticketId)) { res.status(400).json({ error: { code: 'INVALID_INPUT', message: 'Invalid ticket id' } }); return; }
 
@@ -1585,6 +1613,211 @@ app.post('/api/admin/users/:id/reset-password', ...adminOnly, async (req: Reques
   } catch (error) {
     console.error('Reset password error:', error);
     res.status(500).json({ error: { code: 'SERVER_ERROR', message: 'Unable to reset password' } });
+  }
+});
+
+// ===========================================================================
+// DASHBOARD ENDPOINTS (Lab 4 — Issue #59)
+// ===========================================================================
+
+// GET /api/dashboards/requester — Requester Dashboard metrics & recent tickets (FR-12, BR-12, AC-06)
+app.get('/api/dashboards/requester', ...requesterOnly, async (req: Request, res: Response) => {
+  try {
+    const userId = req.user!.userId;
+
+    const openStatuses: TicketStatus[] = [
+      TicketStatus.NEW,
+      TicketStatus.OPEN,
+      TicketStatus.IN_PROGRESS,
+      TicketStatus.WAITING_FOR_REQUESTER,
+      TicketStatus.REOPENED,
+    ];
+
+    const [myOpenTickets, inProgress, resolved, closed, recentTicketsRaw] = await Promise.all([
+      prisma.ticket.count({
+        where: {
+          requesterId: userId,
+          status: { in: openStatuses },
+        },
+      }),
+      prisma.ticket.count({
+        where: {
+          requesterId: userId,
+          status: TicketStatus.IN_PROGRESS,
+        },
+      }),
+      prisma.ticket.count({
+        where: {
+          requesterId: userId,
+          status: TicketStatus.RESOLVED,
+        },
+      }),
+      prisma.ticket.count({
+        where: {
+          requesterId: userId,
+          status: TicketStatus.CLOSED,
+        },
+      }),
+      prisma.ticket.findMany({
+        where: {
+          requesterId: userId,
+        },
+        orderBy: {
+          updatedAt: 'desc',
+        },
+        take: 5,
+        select: {
+          id: true,
+          ticketNumber: true,
+          summary: true,
+          status: true,
+          requestedPriority: true,
+          updatedAt: true,
+        },
+      }),
+    ]);
+
+    const recentTickets = recentTicketsRaw.map((t) => ({
+      id: t.id,
+      ticketNumber: t.ticketNumber,
+      summary: t.summary,
+      status: t.status,
+      requestedPriority: t.requestedPriority,
+      updatedAt: t.updatedAt,
+    }));
+
+    const metrics = {
+      myOpenTickets,
+      inProgress,
+      resolved,
+      closed,
+    };
+
+    const drillDownLinks = {
+      myOpenTickets: '/tickets?status=open-group',
+      inProgress: '/tickets?status=IN_PROGRESS',
+      resolved: '/tickets?status=RESOLVED',
+      closed: '/tickets?status=CLOSED',
+    };
+
+    res.status(200).json({
+      success: true,
+      data: {
+        metrics,
+        recentTickets,
+        drillDownLinks,
+      },
+      metrics,
+      recentTickets,
+      drillDownLinks,
+    });
+  } catch (error) {
+    console.error('Requester dashboard error:', error);
+    res.status(500).json({
+      success: false,
+      error: { code: 'SERVER_ERROR', message: 'Unable to retrieve requester dashboard' },
+    });
+  }
+});
+
+// GET /api/dashboards/staff — IT Staff & Admin Dashboard metrics & recent tickets (FR-13, BR-13, AC-07)
+app.get('/api/dashboards/staff', ...staffOrAdmin, async (req: Request, res: Response) => {
+  try {
+    const userId = req.user!.userId;
+
+    const activeStatuses: TicketStatus[] = [
+      TicketStatus.NEW,
+      TicketStatus.OPEN,
+      TicketStatus.IN_PROGRESS,
+      TicketStatus.WAITING_FOR_REQUESTER,
+      TicketStatus.REOPENED,
+    ];
+
+    const [newCount, openCount, inProgressCount, waitingForRequesterCount, myAssignedCount, recentTicketsRaw] = await Promise.all([
+      prisma.ticket.count({
+        where: { status: TicketStatus.NEW },
+      }),
+      prisma.ticket.count({
+        where: { status: TicketStatus.OPEN },
+      }),
+      prisma.ticket.count({
+        where: { status: TicketStatus.IN_PROGRESS },
+      }),
+      prisma.ticket.count({
+        where: { status: TicketStatus.WAITING_FOR_REQUESTER },
+      }),
+      prisma.ticket.count({
+        where: {
+          ownerId: userId,
+          status: { in: activeStatuses },
+        },
+      }),
+      prisma.ticket.findMany({
+        orderBy: {
+          updatedAt: 'desc',
+        },
+        take: 5,
+        select: {
+          id: true,
+          ticketNumber: true,
+          summary: true,
+          status: true,
+          itPriority: true,
+          requestedPriority: true,
+          owner: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
+          updatedAt: true,
+        },
+      }),
+    ]);
+
+    const recentTickets = recentTicketsRaw.map((t) => ({
+      id: t.id,
+      ticketNumber: t.ticketNumber,
+      summary: t.summary,
+      status: t.status,
+      itPriority: t.itPriority ?? t.requestedPriority,
+      ownerName: t.owner ? t.owner.name : null,
+      updatedAt: t.updatedAt,
+    }));
+
+    const metrics = {
+      new: newCount,
+      open: openCount,
+      inProgress: inProgressCount,
+      waitingForRequester: waitingForRequesterCount,
+      myAssigned: myAssignedCount,
+    };
+
+    const drillDownLinks = {
+      new: '/staff/tickets?status=NEW',
+      open: '/staff/tickets?status=OPEN',
+      inProgress: '/staff/tickets?status=IN_PROGRESS',
+      waitingForRequester: '/staff/tickets?status=WAITING_FOR_REQUESTER',
+      myAssigned: '/staff/tickets?owner=me&status=open-group',
+    };
+
+    res.status(200).json({
+      success: true,
+      data: {
+        metrics,
+        recentTickets,
+        drillDownLinks,
+      },
+      metrics,
+      recentTickets,
+      drillDownLinks,
+    });
+  } catch (error) {
+    console.error('Staff dashboard error:', error);
+    res.status(500).json({
+      success: false,
+      error: { code: 'SERVER_ERROR', message: 'Unable to retrieve staff dashboard' },
+    });
   }
 });
 

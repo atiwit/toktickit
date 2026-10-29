@@ -46,14 +46,14 @@
 ### 2.3. Dashboard APIs Tests (`server/tests/lab-04/requester-dashboard.api.test.ts` & `staff-dashboard.api.test.ts`)
 | Test ID | Type | AC / Req | What It Tests | Expected Result | Automated Test File | Final Status |
 |---|---|---|---|---|---|:---:|
-| API-DSH-01 | API | AC-06 | GET Requester Dashboard as authenticated Requester | 200 OK; returns metrics isolated to caller | `server/tests/lab-04/requester-dashboard.api.test.ts` | Planned |
-| API-DSH-02 | API | AC-06 | Verify Requester Dashboard metrics match database counts | Accurate counts for Open, In Progress, Resolved, Closed | `server/tests/lab-04/requester-dashboard.api.test.ts` | Planned |
-| API-DSH-03 | API | AC-06 | Requester Dashboard recent tickets list length ≤ 5 | 200 OK; sorted by updatedAt descending | `server/tests/lab-04/requester-dashboard.api.test.ts` | Planned |
-| API-DSH-04 | API | AC-06 | IT Staff requesting Requester Dashboard | 403 Forbidden; role mismatch | `server/tests/lab-04/requester-dashboard.api.test.ts` | Planned |
-| API-DSH-05 | API | AC-07 | GET Staff Dashboard as IT Staff | 200 OK; operational metrics returned | `server/tests/lab-04/staff-dashboard.api.test.ts` | Planned |
-| API-DSH-06 | API | AC-07 | Verify Staff Dashboard counts match DB queries | Accurate counts for New, Open, In Progress, Waiting, My Assigned | `server/tests/lab-04/staff-dashboard.api.test.ts` | Planned |
-| API-DSH-07 | API | AC-07 | GET Staff Dashboard as Administrator | 200 OK; admin has full staff dashboard access | `server/tests/lab-04/staff-dashboard.api.test.ts` | Planned |
-| API-DSH-08 | API | AC-07 | Requester requesting Staff Dashboard | 403 Forbidden; unauthorized role blocked | `server/tests/lab-04/staff-dashboard.api.test.ts` | Planned |
+| API-DSH-01 | API | AC-06 | GET Requester Dashboard as authenticated Requester | 200 OK; returns metrics isolated to caller | `server/tests/lab-04/requester-dashboard.api.test.ts` | Pass |
+| API-DSH-02 | API | AC-06 | Verify Requester Dashboard metrics match database counts | Accurate counts for Open, In Progress, Resolved, Closed | `server/tests/lab-04/requester-dashboard.api.test.ts` | Pass |
+| API-DSH-03 | API | AC-06 | Requester Dashboard recent tickets list length ≤ 5 | 200 OK; sorted by updatedAt descending | `server/tests/lab-04/requester-dashboard.api.test.ts` | Pass |
+| API-DSH-04 | API | AC-06 | IT Staff requesting Requester Dashboard | 403 Forbidden; role mismatch | `server/tests/lab-04/requester-dashboard.api.test.ts` | Pass |
+| API-DSH-05 | API | AC-07 | GET Staff Dashboard as IT Staff | 200 OK; operational metrics returned | `server/tests/lab-04/staff-dashboard.api.test.ts` | Pass |
+| API-DSH-06 | API | AC-07 | Verify Staff Dashboard counts match DB queries | Accurate counts for New, Open, In Progress, Waiting, My Assigned | `server/tests/lab-04/staff-dashboard.api.test.ts` | Pass |
+| API-DSH-07 | API | AC-07 | GET Staff Dashboard as Administrator | 200 OK; admin has full staff dashboard access | `server/tests/lab-04/staff-dashboard.api.test.ts` | Pass |
+| API-DSH-08 | API | AC-07 | Requester requesting Staff Dashboard | 403 Forbidden; unauthorized role blocked | `server/tests/lab-04/staff-dashboard.api.test.ts` | Pass |
 
 ---
 

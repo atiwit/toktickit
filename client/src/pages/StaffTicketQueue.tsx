@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 
 interface StaffTicket {
   id: number;
@@ -94,6 +94,7 @@ const SkeletonRow: React.FC = () => (
 
 const StaffTicketQueue: React.FC = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
 
   const [tickets, setTickets]       = useState<StaffTicket[]>([]);
   const [pagination, setPagination] = useState<Pagination | null>(null);
@@ -101,13 +102,22 @@ const StaffTicketQueue: React.FC = () => {
   const [error, setError]           = useState<string | null>(null);
 
   // Filters / sort / page
-  const [search, setSearch]         = useState('');
-  const [status, setStatus]         = useState('');
-  const [itPriority, setItPriority] = useState('');
-  const [ownerId, setOwnerId]       = useState('');
+  const initialStatus = searchParams.get('status') || '';
+  const initialOwner = searchParams.get('owner') === 'me' ? 'me' : (searchParams.get('ownerId') || '');
+  const [search, setSearch]         = useState(searchParams.get('search') || '');
+  const [status, setStatus]         = useState(initialStatus);
+  const [itPriority, setItPriority] = useState(searchParams.get('itPriority') || '');
+  const [ownerId, setOwnerId]       = useState(initialOwner);
   const [sort, setSort]             = useState('createdAt_desc');
   const [page, setPage]             = useState(1);
   const [pageSize, setPageSize]     = useState(10);
+
+  useEffect(() => {
+    const s = searchParams.get('status');
+    const o = searchParams.get('owner') === 'me' ? 'me' : searchParams.get('ownerId');
+    if (s !== null) setStatus(s);
+    if (o !== null) setOwnerId(o);
+  }, [searchParams]);
 
   const fetchQueue = useCallback(async () => {
     setLoading(true);

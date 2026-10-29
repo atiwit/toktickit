@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 
 interface Category {
   id: number;
@@ -84,6 +84,7 @@ const buildPages = (current: number, total: number): (number | '…')[] => {
 const MyTickets: React.FC = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
 
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [meta, setMeta] = useState<Meta | null>(null);
@@ -94,10 +95,15 @@ const MyTickets: React.FC = () => {
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState('');
   const [reqPriority, setReqPriority] = useState('');
-  const [curStatus, setCurStatus] = useState('');
+  const [curStatus, setCurStatus] = useState(searchParams.get('status') || '');
   const [sort, setSort] = useState<'date_desc' | 'date_asc'>('date_desc');
   const [page, setPage] = useState(1);
   const LIMIT = 8;
+
+  useEffect(() => {
+    const s = searchParams.get('status');
+    if (s !== null) setCurStatus(s);
+  }, [searchParams]);
 
   /* ── fetch categories once ── */
   useEffect(() => {
