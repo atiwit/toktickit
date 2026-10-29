@@ -1798,7 +1798,7 @@ app.get('/api/dashboards/staff', ...staffOrAdmin, async (req: Request, res: Resp
       open: '/staff/tickets?status=OPEN',
       inProgress: '/staff/tickets?status=IN_PROGRESS',
       waitingForRequester: '/staff/tickets?status=WAITING_FOR_REQUESTER',
-      myAssigned: '/staff/tickets?owner=me',
+      myAssigned: '/staff/tickets?owner=me&status=open-group',
     };
 
     res.status(200).json({

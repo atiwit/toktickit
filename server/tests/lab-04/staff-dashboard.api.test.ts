@@ -216,7 +216,7 @@ describe('Staff Dashboard API Tests (server/tests/lab-04/staff-dashboard.api.tes
       open: '/staff/tickets?status=OPEN',
       inProgress: '/staff/tickets?status=IN_PROGRESS',
       waitingForRequester: '/staff/tickets?status=WAITING_FOR_REQUESTER',
-      myAssigned: '/staff/tickets?owner=me',
+      myAssigned: '/staff/tickets?owner=me&status=open-group',
     });
   });
 

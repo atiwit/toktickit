@@ -177,7 +177,7 @@
        - `waitingForRequester`: นับตั๋วสถานะ `WAITING_FOR_REQUESTER` ทั้งหมดในระบบ
        - `myAssigned`: นับตั๋วที่ผู้ใช้ปัจจุบันเป็นเจ้าของ (`ownerId = user.id`) ที่มีสถานะยังไม่สิ้นสุด (`[NEW, OPEN, IN_PROGRESS, WAITING_FOR_REQUESTER, REOPENED]`)
      - แสดงรายการ `recentTickets` 5 รายการล่าสุดของทั้งระบบ พร้อม `itPriority` (fallback เป็น `requestedPriority` เมื่อยังไม่ได้กำหนด) และ `ownerName` (หรือ `null` เมื่อตั๋วยังไม่มีผู้รับผิดชอบ)
-     - จัดเตรียม `drillDownLinks` ไปยังคิวงานที่ตรงกัน (`/staff/tickets?status=NEW`, `/staff/tickets?status=OPEN`, `/staff/tickets?status=IN_PROGRESS`, `/staff/tickets?status=WAITING_FOR_REQUESTER`, `/staff/tickets?owner=me`)
+     - จัดเตรียม `drillDownLinks` ไปยังคิวงานที่ตรงกัน (`/staff/tickets?status=NEW`, `/staff/tickets?status=OPEN`, `/staff/tickets?status=IN_PROGRESS`, `/staff/tickets?status=WAITING_FOR_REQUESTER`, `/staff/tickets?owner=me&status=open-group`)
   3. **Data Integrity & Standard Handling (BR-14):**
      - รองรับ Empty State กรณีฐานข้อมูลไม่มีข้อมูล โดยคืนค่า 0 สำหรับทุก Metrics และคืน array ว่าง `[]` สำหรับ `recentTickets` โดยไม่เกิด Error
      - ส่ง JSON response ตามโครงสร้าง envelope `{ success: true, data: { metrics, recentTickets, drillDownLinks }, metrics, recentTickets, drillDownLinks }` เพื่อความเข้ากันได้อย่างสมบูรณ์
@@ -185,7 +185,13 @@
      - พัฒนาชุดทดสอบ `server/tests/lab-04/requester-dashboard.api.test.ts` (9 tests) ครอบคลุม API-DSH-01 ถึง API-DSH-04, Data isolation, และ Security checks
      - พัฒนาชุดทดสอบ `server/tests/lab-04/staff-dashboard.api.test.ts` (9 tests) ครอบคลุม API-DSH-05 ถึง API-DSH-08, Multi-role access (IT Staff + Admin), Fallback priority, และ Security checks
      - ผ่านการทดสอบทั้งหมด 18/18 tests (100%) และภาพรวม Lab 4 ผ่านครบ 90/90 tests
-- **Status:** Implemented / Ready for Review (Branch: `feature/lab4-dashboards-api`)
+- **Review Comment:**
+  > "จาที่ผมดูนะครับการ์ดนับเฉพาะสถานะ active แต่ link ?owner=me ไม่กรองสถานะ รายการที่เปิดจึงรวมตั๋ว RESOLVED, CLOSED, CANCELLED ด้วย ตัวเลขบนการ์ดจะน้อยกว่าที่เห็นในหน้ารายการ ผมว่าควรให้ link เติม status=open-group ด้วยนะครับ ฝากลองเช็คตรงนี้หน่อยนะๆ เหมือนจะผิด spec ข้อ AC-08 และ FR-14"
+- **Author Response & Resolution:**
+  1. แก้ไข `drillDownLinks.myAssigned` ใน `server/src/index.ts` จาก `/staff/tickets?owner=me` เป็น `/staff/tickets?owner=me&status=open-group` เพื่อให้สอดคล้องกับข้อกำหนด AC-08 และ FR-14 ที่ตัวเลขบนการ์ดและผลลัพธ์ในหน้ารายการตั๋วต้องตรงกันอย่างสมบูรณ์
+  2. อัปเดต `docs/lab-04/api-spec.md` ในส่วนตัวอย่าง Response ของ `GET /api/dashboards/staff` ให้ระบุ `myAssigned` เป็น `/staff/tickets?owner=me&status=open-group`
+  3. ปรับปรุงชุดทดสอบ `server/tests/lab-04/staff-dashboard.api.test.ts` (API-DSH-05) ให้ assert ลิงก์ `myAssigned` ที่มี `status=open-group` ผ่านครบ 100%
+- **Status:** Approved / Ready for Review (Branch: `feature/lab4-dashboards-api`)
 
 
 
