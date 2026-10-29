@@ -72,8 +72,9 @@
 | :--- | :--- | :--- | :---: | :--- |
 | #64 | docs-preparation for lab4 | `feature/lab4-docs-prepare` | Merged | [PR #64](https://github.com/atiwit/toktickit/pull/64) |
 | #65 | feat(actions): Actions Taken model, migration, seed, and APIs | `feature/lab4-actions-foundation` | Merged | [PR #65](https://github.com/atiwit/toktickit/pull/65) |
-| #69 | feat(ui): Actions Taken on Ticket Detail UI | `feature/lab4-actions-ui` | Ready for Review | [PR #69](https://github.com/atiwit/toktickit/pull/69) |
-| — | feat(dashboard): Role-based dashboard backend APIs | `feature/lab4-dashboards-api` | Planned | — |
+| #66 | feat(workflow): Ticket workflow, Resolution Gate, and Concurrency | `feature/lab4-ticket-workflow` | Merged | [PR #66](https://github.com/atiwit/toktickit/pull/66) |
+| #69 | feat(ui): Actions Taken on Ticket Detail UI | `feature/lab4-actions-ui` | Merged | [PR #69](https://github.com/atiwit/toktickit/pull/69) |
+| — | feat(dashboard): Role-based dashboard backend APIs | `feature/lab4-dashboards-api` | Ready for Review | — |
 | — | feat(dashboard-ui): Role-based dashboard screens and navigation | `feature/lab4-dashboards-ui` | Planned | — |
 | — | test(e2e): Playwright E2E suites and responsive screenshots | `feature/lab4-e2e-screenshots` | Planned | — |
 | — | chore(release): Final regression, hardening, and merge to main | `feature/lab4-release-integration` | Planned | — |
@@ -151,7 +152,40 @@
        - `UI-WF-01`: การแจ้งเตือน Resolution Gate เมื่อพยายาม Resolve ตั๋วที่มี 0 actions, การคลิกปุ่มทางลัด "+ Add Action Taken Now" เพื่อเปิดฟอร์ม, และการยอมรับการเปลี่ยนสถานะเมื่อมี action แล้ว
        - `UI-WF-02`: การจำกัดปุ่มเปลี่ยนสถานะตาม Permitted Transition Matrix และการแสดง Confirmation Dialog สำหรับสถานะที่มีผลกระทบรุนแรง (Cancelled/Closed)
      - ผลการทดสอบผ่านครบ 16/16 tests (100%) และคงความเข้ากันได้ย้อนหลังกับชุดทดสอบของ Lab 1–3
-- **Status:** Ready for Review (เปิด Pull Request [PR #69](https://github.com/atiwit/toktickit/pull/69) เข้า `lab4-staging` เรียบร้อยในสถานะ Open โดยยังไม่ต้อง Merge เพื่อรอให้ Reviewer ตรวจสอบ)
+- **Status:** Approved & Merged into `lab4-staging` (Merged in PR #69)
+
+---
+
+### Issue #59: feat(dashboard): Role-based dashboard backend APIs (`feature/lab4-dashboards-api`)
+- **Reviewer:** [@copter549365](https://github.com/copter549365) (Second Reviewer)
+- **Review Scope & Summary:**
+  1. **Requester Dashboard Endpoint (`GET /api/dashboards/requester`):**
+     - บังคับใช้ Authorization สำหรับบทบาท Requester เท่านั้น (`...requesterOnly`) โดยปฏิเสธ IT Staff และ Administrator ด้วย HTTP 403 Forbidden และปฏิเสธ Unauthenticated requests ด้วย HTTP 401 Unauthorized
+     - ตรวจสอบความถูกต้องของการคำนวณ Metrics แยกเฉพาะตั๋วที่เป็นของ Requester ปัจจุบันอย่างแท้จริง (`requesterId = user.id`):
+       - `myOpenTickets`: นับตั๋วที่มีสถานะอยู่ในกลุ่มเปิด (`[NEW, OPEN, IN_PROGRESS, WAITING_FOR_REQUESTER, REOPENED]`)
+       - `inProgress`: นับตั๋วที่มีสถานะ `IN_PROGRESS`
+       - `resolved`: นับตั๋วที่มีสถานะ `RESOLVED`
+       - `closed`: นับตั๋วที่มีสถานะ `CLOSED`
+     - แสดงรายการ `recentTickets` ไม่เกิน 5 รายการล่าสุด เรียงลำดับตาม `updatedAt` จากใหม่ไปเก่า พร้อมข้อมูลจำเป็นครบถ้วน (`id`, `ticketNumber`, `summary`, `status`, `requestedPriority`, `updatedAt`)
+     - จัดเตรียม `drillDownLinks` ไปยังหน้ารายการตั๋วพร้อม query parameters ตรงตามประเภทการ์ด (`/tickets?status=open-group`, `/tickets?status=IN_PROGRESS`, `/tickets?status=RESOLVED`, `/tickets?status=CLOSED`)
+  2. **IT Staff & Administrator Dashboard Endpoint (`GET /api/dashboards/staff`):**
+     - บังคับใช้ Authorization สำหรับบทบาท IT Staff และ Administrator (`...staffOrAdmin`) โดยปฏิเสธ Requester ด้วย HTTP 403 Forbidden
+     - ตรวจสอบความถูกต้องของการคำนวณ Metrics เชิงปฏิบัติการระดับศูนย์บริการ:
+       - `new`: นับตั๋วสถานะ `NEW` ทั้งหมดในระบบ
+       - `open`: นับตั๋วสถานะ `OPEN` ทั้งหมดในระบบ
+       - `inProgress`: นับตั๋วสถานะ `IN_PROGRESS` ทั้งหมดในระบบ
+       - `waitingForRequester`: นับตั๋วสถานะ `WAITING_FOR_REQUESTER` ทั้งหมดในระบบ
+       - `myAssigned`: นับตั๋วที่ผู้ใช้ปัจจุบันเป็นเจ้าของ (`ownerId = user.id`) ที่มีสถานะยังไม่สิ้นสุด (`[NEW, OPEN, IN_PROGRESS, WAITING_FOR_REQUESTER, REOPENED]`)
+     - แสดงรายการ `recentTickets` 5 รายการล่าสุดของทั้งระบบ พร้อม `itPriority` (fallback เป็น `requestedPriority` เมื่อยังไม่ได้กำหนด) และ `ownerName` (หรือ `null` เมื่อตั๋วยังไม่มีผู้รับผิดชอบ)
+     - จัดเตรียม `drillDownLinks` ไปยังคิวงานที่ตรงกัน (`/staff/tickets?status=NEW`, `/staff/tickets?status=OPEN`, `/staff/tickets?status=IN_PROGRESS`, `/staff/tickets?status=WAITING_FOR_REQUESTER`, `/staff/tickets?owner=me`)
+  3. **Data Integrity & Standard Handling (BR-14):**
+     - รองรับ Empty State กรณีฐานข้อมูลไม่มีข้อมูล โดยคืนค่า 0 สำหรับทุก Metrics และคืน array ว่าง `[]` สำหรับ `recentTickets` โดยไม่เกิด Error
+     - ส่ง JSON response ตามโครงสร้าง envelope `{ success: true, data: { metrics, recentTickets, drillDownLinks }, metrics, recentTickets, drillDownLinks }` เพื่อความเข้ากันได้อย่างสมบูรณ์
+  4. **Automated API Test Suites (`server/tests/lab-04/`):**
+     - พัฒนาชุดทดสอบ `server/tests/lab-04/requester-dashboard.api.test.ts` (9 tests) ครอบคลุม API-DSH-01 ถึง API-DSH-04, Data isolation, และ Security checks
+     - พัฒนาชุดทดสอบ `server/tests/lab-04/staff-dashboard.api.test.ts` (9 tests) ครอบคลุม API-DSH-05 ถึง API-DSH-08, Multi-role access (IT Staff + Admin), Fallback priority, และ Security checks
+     - ผ่านการทดสอบทั้งหมด 18/18 tests (100%) และภาพรวม Lab 4 ผ่านครบ 90/90 tests
+- **Status:** Implemented / Ready for Review (Branch: `feature/lab4-dashboards-api`)
 
 
 

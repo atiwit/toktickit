@@ -1,4 +1,4 @@
-# AI Use Log — Lab 04
+﻿# AI Use Log — Lab 04
 
 ## LLM Specification
 - **Model Used:** Gemini 3.8 Flash (High) / Antigravity Agentic Pair Programmer
@@ -32,6 +32,14 @@
 ### Prompt 4 : Actions Taken on Ticket Detail UI & Resolution Gate Interception (Issue #58)
 > **Prompt:** "ทำ Issue4 โดยทำตาม tasks ที่ได้วางแผนไว้และอัพเดทไฟล์เอกสาร reviwer ให้ด้วย"
 > 
-> **Reflection:** ในส่วนของ Issue 4 ได้พัฒนา UI คอมโพเนนต์ `ActionsTakenSection` ตามแบบแผน Zen Green Design System รองรับการแสดงผลทั้งบนหน้าจอ IT Staff (Interactive mode) และหน้าจอ Requester (Read-only mode และเขียน Automated Component Tests ครอบคลุม ผ่าน 100%
+> **Reflection:** ในส่วนของ Issue 4 ได้พัฒนา UI คอมโพเนนต์ `ActionsTakenSection` ตามแบบแผน Zen Green Design System รองรับการแสดงผลทั้งบนหน้าจอ IT Staff (Interactive mode) และหน้าจอ Requester (Read-only mode) และเขียน Automated Component Tests ครอบคลุม ผ่าน 100%
+
+---
+
+### Prompt 5 : Role-Based Dashboard APIs (Issue #59)
+> **Prompt:** "ทำ Issue5 โดยทำตาม tasks ที่ได้วางแผนไว้และอัพเดทไฟล์เอกสาร reviwer ให้ด้วย ไม่ต้อง push และ commit"
+> 
+> **Reflection:** ในส่วนของ Issue 5 ได้พัฒนา REST API endpoints สำหรับ Role-Based Dashboards ที่ง Requester และ IT Staff และยัง จัดการ Empty State ให้คืนค่าตัวเลข 0 และ array ว่างและพัฒนาระบบ Automated API Tests รวม 18 ข้อ ครอบคลุมการคำนวณ, Authorization, Data Isolation, Session Invalidation และ Edge Cases โดยผ่านการทดสอบ 100%
+
 
 
