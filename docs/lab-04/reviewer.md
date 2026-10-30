@@ -75,8 +75,8 @@
 | #66 | feat(workflow): Ticket workflow, Resolution Gate, and Concurrency | `feature/lab4-ticket-workflow` | Merged | [PR #66](https://github.com/atiwit/toktickit/pull/66) |
 | #69 | feat(ui): Actions Taken on Ticket Detail UI | `feature/lab4-actions-ui` | Merged | [PR #69](https://github.com/atiwit/toktickit/pull/69) |
 | #70 | feat(dashboard): Role-based dashboard backend APIs | `feature/lab4-dashboards-api` | Merged | [PR #70](https://github.com/atiwit/toktickit/pull/70) |
-| — | feat(dashboard-ui): Role-based dashboard screens and navigation | `feature/lab4-dashboards-ui` | Ready for Review | — |
-| — | test(e2e): Playwright E2E suites and responsive screenshots | `feature/lab4-e2e-screenshots` | Planned | — |
+| #71 | feat(dashboard-ui): Role-based dashboard screens and navigation | `feature/lab4-dashboards-ui` | Merged | [PR #71](https://github.com/atiwit/toktickit/pull/71) |
+| — | test(e2e): Playwright E2E suites and responsive screenshots | `feature/lab4-e2e-screenshots` | Ready for Review | — |
 | — | chore(release): Final regression, hardening, and merge to main | `feature/lab4-release-integration` | Planned | — |
 
 ---
@@ -232,8 +232,35 @@
      - **Terminal State Validation (BR-10, BR-16):** สกัดกั้นการบันทึกหรือแก้ไข `Actions Taken` บนตั๋วที่มีสถานะเป็น `CANCELLED` หรือ `CLOSED` ด้วย HTTP 400 (`INVALID_TICKET_STATE`)
      - **Future Timestamp Guard (BR-04):** ตรวจสอบ `actionDateTime` ไม่ให้อยู่ในอนาคต หากพบจะตอบกลับด้วย HTTP 400 (`VALIDATION_ERROR`)
      - **Automated Regression Coverage:** เพิ่มชุดทดสอบ API-ACT-25, 26, 27 ใน `server/tests/lab-04/actions-taken.api.test.ts` และการทดสอบ Dropdown ใน `client/src/tests/lab-03/StaffTicketQueue.test.tsx` ผ่าน 100%
-- **Status:** Approved / Ready for Review (Branch: `feature/lab4-dashboards-ui`)
+- **Status:** Approved & Merged into `lab4-staging` (Merged in PR #71)
 
+---
 
-
-
+### Issue #61: test(e2e): Playwright E2E suites and responsive screenshots (`feature/lab4-e2e-screenshots`)
+- **Reviewer:** [@krittaphato3](https://github.com/krittaphato3) (Fourth Reviewer)
+- **Review Scope & Summary:**
+  1. **Automated Playwright E2E Test Suites (`e2e/lab-04/`):**
+     - `e2e/lab-04/actions-taken-flow.spec.ts`:
+       - `E2E-ACT-01`: IT Staff เข้าสู่ระบบ เปิดตั๋วสถานะ Open บันทึก Action Taken ตรวจสอบ auto-populated & disabled `performedBy`, toggle follow-up note input, บันทึกสำเร็จแล้วคลิกแก้ไข action เดิม และยืนยันข้อมูลที่อัปเดต
+       - `E2E-ACT-02`: Requester เข้าสู่ระบบ ดูตั๋วของตนเอง ตรวจสอบ Read-Only mode ของ Actions Taken (ไม่มีปุ่ม "+ Add Action Taken" และไม่มีปุ่มแก้ไข)
+     - `e2e/lab-04/ticket-resolution.spec.ts`:
+       - `E2E-RES-01 & E2E-RES-02`: ตรวจสอบ Resolution Gate สกัดกั้นการ Resolve ตั๋วที่มี 0 actions taken พร้อมแสดง Alert Banner และปุ่มทางลัด "+ Add Action Taken Now" เมื่อบันทึก Action สำเร็จสามารถเปลี่ยนสถานะเป็น RESOLVED ได้อย่างถูกต้อง
+       - `E2E-RES-03`: Requester กด "Problem Appears Resolved" และยืนยันใน Modal จากนั้น IT Staff เข้าดูตั๋วและพบ Advisory Indicator Flag สีเขียวอย่างชัดเจน
+     - `e2e/lab-04/dashboards.spec.ts`:
+       - `E2E-DSH-01`: IT Staff Dashboard ตรวจสอบ Metrics cards, ลิงก์ Drill-down นำทางตรงกับคิวงานที่กรองแล้ว, และปุ่ม Quick actions
+       - `E2E-DSH-02`: Requester Dashboard ตรวจสอบ Metrics cards, ลิงก์ Drill-down ไปยัง My Tickets, และปุ่ม Quick actions
+       - `E2E-DSH-03`: Administrator เข้าถึง Staff Dashboard ได้เต็มรูปแบบตามสิทธิ์
+  2. **Multi-Platform & Responsive Test Results:**
+     - ทดสอบครบถ้วนทั้ง Desktop Chromium และ Mobile Chrome
+     - ผลการทดสอบผ่าน 14/14 tests (100% pass rate)
+     - ตรวจสอบ `assertNoHorizontalOverflow` ปราศจากแนวนอนเลื่อนล้นจอทุกหน้า
+  3. **Visual Evidence & Responsive Screenshots (`artifacts/lab-04/screenshots/`):**
+     - บันทึกภาพหน้าจอแบบ Responsive 3 ขนาดตามมาตรฐาน (Desktop 1280x800, Tablet 768x1024, Mobile 375x812) รวม 21 ภาพ:
+       - `actions-taken/`: `staff-ticket-detail-*`, `add-action-modal-*`, `requester-ticket-detail-readonly-*` (9 ภาพ)
+       - `dashboards/`: `staff-dashboard-*`, `requester-dashboard-*` (6 ภาพ)
+       - `resolution-gate/`: `resolution-gate-alert-*`, `ticket-resolved-*` (6 ภาพ)
+  4. **Component Usability Enhancements:**
+     - ปรับปรุง `StaffTicketQueue.tsx` ให้แถวตาราง `<tr>` มี `onClick` นำทางไปยังหน้ารายละเอียดตั๋วได้โดยตรง รองรับ responsive interactions
+- **Review Comment:**
+  > "ชุดทดสอบ Playwright E2E ครอบคลุม Requirement สำคัญของ Lab 4 ทั้งหมด ทั้ง Actions Taken, Resolution Gate, Advisory Flag และ Dashboards การทดสอบผ่านครบ 14/14 ทั้งบน Chromium และ Mobile Chrome ภาพหน้าจอ Responsive สวยงาม คมชัด ไม่พบปัญหา Layout overflow ตรวจสอบแล้วพร้อม Approve ครับ"
+- **Status:** Approved / Ready for Review (Branch: `feature/lab4-e2e-screenshots`)

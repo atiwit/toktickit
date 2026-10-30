@@ -344,6 +344,12 @@ const StaffTicketQueue: React.FC = () => {
                 {tickets.map((t, idx) => (
                   <tr
                     key={t.id}
+                    onClick={(e) => {
+                      if ((e.target as HTMLElement).closest('button, a, input, select, textarea, [data-interactive]')) {
+                        return;
+                      }
+                      navigate(`/staff/tickets/${t.id}`);
+                    }}
                     style={{ background: idx % 2 === 0 ? '#fff' : '#FAFAFA', cursor: 'pointer' }}
                     onMouseEnter={e => (e.currentTarget.style.background = '#F0FDF4')}
                     onMouseLeave={e => (e.currentTarget.style.background = idx % 2 === 0 ? '#fff' : '#FAFAFA')}
@@ -366,7 +372,10 @@ const StaffTicketQueue: React.FC = () => {
                     <td style={td}>
                       <button
                         id={`btn-open-ticket-${t.id}`}
-                        onClick={() => navigate(`/staff/tickets/${t.id}`)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          navigate(`/staff/tickets/${t.id}`);
+                        }}
                         style={{
                           padding: '5px 14px', borderRadius: '6px',
                           border: '1px solid #006B3C', background: '#F0FDF4',
@@ -387,7 +396,12 @@ const StaffTicketQueue: React.FC = () => {
             {tickets.map(t => (
               <div
                 key={t.id}
-                onClick={() => navigate(`/staff/tickets/${t.id}`)}
+                onClick={(e) => {
+                  if ((e.target as HTMLElement).closest('button, a, input, select, textarea, [data-interactive]')) {
+                    return;
+                  }
+                  navigate(`/staff/tickets/${t.id}`);
+                }}
                 style={{ ...card, padding: '1rem', marginBottom: '0.75rem', cursor: 'pointer' }}
               >
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px', flexWrap: 'wrap', gap: '6px' }}>

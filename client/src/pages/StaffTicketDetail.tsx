@@ -335,7 +335,7 @@ const StaffTicketDetail: React.FC = () => {
               </div>
             ))}
             {ticket.requesterIndicatedResolved && (
-              <div style={{ marginTop: '10px', display: 'flex', gap: '8px', alignItems: 'center', background: '#F0FDF4', borderRadius: '6px', padding: '8px 12px' }}>
+              <div id="advisory-requester-resolved" style={{ marginTop: '10px', display: 'flex', gap: '8px', alignItems: 'center', background: '#F0FDF4', borderRadius: '6px', padding: '8px 12px' }}>
                 <span>✅</span>
                 <span style={{ fontSize: '0.85rem', color: '#065F46', fontWeight: 600 }}>Requester indicated: problem appears resolved</span>
               </div>
