@@ -344,6 +344,7 @@ const StaffTicketQueue: React.FC = () => {
                 {tickets.map((t, idx) => (
                   <tr
                     key={t.id}
+                    onClick={() => navigate(`/staff/tickets/${t.id}`)}
                     style={{ background: idx % 2 === 0 ? '#fff' : '#FAFAFA', cursor: 'pointer' }}
                     onMouseEnter={e => (e.currentTarget.style.background = '#F0FDF4')}
                     onMouseLeave={e => (e.currentTarget.style.background = idx % 2 === 0 ? '#fff' : '#FAFAFA')}

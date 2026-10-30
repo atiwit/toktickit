@@ -348,52 +348,67 @@ app.post('/api/tickets', ...anyRole, async (req: Request, res: Response) => {
       return;
     }
 
-    // Generate ticket number TKT-YYYYMMDD-NNNN
-    const today = new Date();
-    const dateStr = today.toISOString().slice(0, 10).replace(/-/g, '');
-    const prefix = `TKT-${dateStr}-`;
-    const lastTicket = await prisma.ticket.findFirst({
-      where: { ticketNumber: { startsWith: prefix } },
-      orderBy: { ticketNumber: 'desc' },
-      select: { ticketNumber: true },
-    });
-    let sequence = 1;
-    if (lastTicket) {
-      const lastSeg = lastTicket.ticketNumber.slice(lastTicket.ticketNumber.lastIndexOf('-') + 1);
-      const lastSeq = parseInt(lastSeg, 10);
-      if (!isNaN(lastSeq)) sequence = lastSeq + 1;
-    }
-    const ticketNumber = `${prefix}${String(sequence).padStart(4, '0')}`;
+    // Generate ticket number TKT-YYYYMMDD-NNNN with concurrency retry
+    let ticket;
+    for (let attempt = 0; attempt < 5; attempt++) {
+      try {
+        const today = new Date();
+        const dateStr = today.toISOString().slice(0, 10).replace(/-/g, '');
+        const prefix = `TKT-${dateStr}-`;
+        const lastTicket = await prisma.ticket.findFirst({
+          where: { ticketNumber: { startsWith: prefix } },
+          orderBy: { ticketNumber: 'desc' },
+          select: { ticketNumber: true },
+        });
+        let sequence = 1;
+        if (lastTicket) {
+          const lastSeg = lastTicket.ticketNumber.slice(lastTicket.ticketNumber.lastIndexOf('-') + 1);
+          const lastSeq = parseInt(lastSeg, 10);
+          if (!isNaN(lastSeq)) sequence = lastSeq + 1;
+        }
+        const ticketNumber = `${prefix}${String(sequence + attempt).padStart(4, '0')}`;
 
-    const ticket = await prisma.ticket.create({
-      data: {
-        ticketNumber,
-        requesterId,                        // from JWT, not client body (BR-03)
-        categoryId,
-        relatedSystemId,
-        requestedPriority,
-        itPriority: requestedPriority,      // default copy (BR-13)
-        summary: summary.trim(),
-        description: description.trim(),
-        status: 'NEW',
-      },
-      select: {
-        id: true,
-        ticketNumber: true,
-        status: true,
-        requestedPriority: true,
-        itPriority: true,
-        summary: true,
-        description: true,
-        createdAt: true,
-        category: { select: { id: true, name: true } },
-        relatedSystem: { select: { id: true, name: true } },
-        requester: { select: { id: true, name: true } },
-      },
-    });
+        ticket = await prisma.ticket.create({
+          data: {
+            ticketNumber,
+            requesterId,                        // from JWT, not client body (BR-03)
+            categoryId,
+            relatedSystemId,
+            requestedPriority,
+            itPriority: requestedPriority,      // default copy (BR-13)
+            summary: summary.trim(),
+            description: description.trim(),
+            status: 'NEW',
+          },
+          select: {
+            id: true,
+            ticketNumber: true,
+            status: true,
+            requestedPriority: true,
+            itPriority: true,
+            summary: true,
+            description: true,
+            createdAt: true,
+            category: { select: { id: true, name: true } },
+            relatedSystem: { select: { id: true, name: true } },
+            requester: { select: { id: true, name: true } },
+          },
+        });
+        break;
+      } catch (err: any) {
+        if (err?.code === 'P2002' && attempt < 4) {
+          continue;
+        }
+        throw err;
+      }
+    }
 
     res.status(201).json(ticket);
-  } catch (error) {
+  } catch (error: any) {
+    if (error?.code === 'P2003') {
+      res.status(400).json({ error: { code: 'INVALID_REFERENCE', message: 'Referenced category or related system does not exist' } });
+      return;
+    }
     console.error('Create ticket error:', error);
     res.status(500).json({ error: { code: 'SERVER_ERROR', message: 'Unable to create ticket' } });
   }
@@ -405,8 +420,9 @@ app.get('/api/tickets', ...requesterOnly, async (req: Request, res: Response) =>
     const requesterId = req.user!.userId;
     const { search, status, category, requestedPriority, sort, page, limit } = req.query;
 
-    const pageNum = parseInt(String(page)) || 1;
-    const limitNum = parseInt(String(limit)) || 10;
+    const pageNum = Math.max(1, parseInt(String(page), 10) || 1);
+    const rawLimit = parseInt(String(limit), 10) || 10;
+    const limitNum = Math.min(100, Math.max(1, rawLimit));
     const skip = (pageNum - 1) * limitNum;
 
     const where: any = { requesterId };  // always scoped to authenticated user (AC-03)
@@ -470,7 +486,7 @@ app.get('/api/tickets', ...requesterOnly, async (req: Request, res: Response) =>
 // GET /api/tickets/:id — Ticket Detail (Requester: own only; 404 not 403 for others)
 app.get('/api/tickets/:id', ...requesterOnly, async (req: Request, res: Response) => {
   const ticketId = Number(req.params.id);
-  if (isNaN(ticketId) || !Number.isInteger(ticketId)) {
+  if (isNaN(ticketId) || !Number.isInteger(ticketId) || ticketId <= 0) {
     res.status(400).json({ error: { code: 'INVALID_INPUT', message: 'Invalid ticket id' } });
     return;
   }
@@ -512,7 +528,7 @@ app.get('/api/tickets/:id', ...requesterOnly, async (req: Request, res: Response
 // PATCH /api/tickets/:id/requester-resolved — Requester indicates "Problem Appears Resolved" (FR-12)
 app.patch('/api/tickets/:id/requester-resolved', ...requesterOnly, async (req: Request, res: Response) => {
   const ticketId = Number(req.params.id);
-  if (isNaN(ticketId)) { res.status(400).json({ error: { code: 'INVALID_INPUT', message: 'Invalid ticket id' } }); return; }
+  if (isNaN(ticketId) || !Number.isInteger(ticketId) || ticketId <= 0) { res.status(400).json({ error: { code: 'INVALID_INPUT', message: 'Invalid ticket id' } }); return; }
 
   try {
     const ticket = await prisma.ticket.findUnique({ where: { id: ticketId } });
@@ -565,7 +581,7 @@ const upload = multer({
 // POST /api/tickets/:id/attachments
 app.post('/api/tickets/:id/attachments', ...requesterOnly, (req: Request, res: Response) => {
   const ticketId = Number(req.params.id);
-  if (isNaN(ticketId)) { res.status(400).json({ error: { code: 'INVALID_INPUT', message: 'Invalid ticket id' } }); return; }
+  if (isNaN(ticketId) || !Number.isInteger(ticketId) || ticketId <= 0) { res.status(400).json({ error: { code: 'INVALID_INPUT', message: 'Invalid ticket id' } }); return; }
 
   upload.single('file')(req, res, async (err) => {
     if (err) {
@@ -607,6 +623,7 @@ app.post('/api/tickets/:id/attachments', ...requesterOnly, (req: Request, res: R
       });
       res.status(201).json(attachment);
     } catch (error) {
+      try { if (req.file) fs.unlinkSync(req.file.path); } catch { /**/ }
       console.error('Attachment create error:', error);
       res.status(500).json({ error: { code: 'SERVER_ERROR', message: 'Unable to save attachment' } });
     }
@@ -616,7 +633,7 @@ app.post('/api/tickets/:id/attachments', ...requesterOnly, (req: Request, res: R
 // GET /api/tickets/:id/attachments
 app.get('/api/tickets/:id/attachments', ...anyRole, async (req: Request, res: Response) => {
   const ticketId = Number(req.params.id);
-  if (isNaN(ticketId)) { res.status(400).json({ error: { code: 'INVALID_INPUT', message: 'Invalid ticket id' } }); return; }
+  if (isNaN(ticketId) || !Number.isInteger(ticketId) || ticketId <= 0) { res.status(400).json({ error: { code: 'INVALID_INPUT', message: 'Invalid ticket id' } }); return; }
 
   try {
     const ticket = await prisma.ticket.findUnique({ where: { id: ticketId } });
@@ -642,7 +659,10 @@ app.get('/api/tickets/:id/attachments', ...anyRole, async (req: Request, res: Re
 // GET /api/attachments/:id/download
 app.get('/api/attachments/:id/download', ...anyRole, async (req: Request, res: Response) => {
   const id = Number(req.params.id);
-  if (isNaN(id)) { res.status(400).json({ error: { code: 'INVALID_INPUT', message: 'Invalid attachment id' } }); return; }
+  if (isNaN(id) || !Number.isInteger(id) || id <= 0) {
+    res.status(400).json({ error: { code: 'INVALID_INPUT', message: 'Invalid attachment id' } });
+    return;
+  }
 
   try {
     const attachment = await prisma.attachment.findUnique({ where: { id }, include: { ticket: true } });
@@ -655,10 +675,12 @@ app.get('/api/attachments/:id/download', ...anyRole, async (req: Request, res: R
       res.status(403).json({ error: { code: 'REMOVED', message: 'This attachment has been removed and cannot be downloaded' } }); return;
     }
 
-    const filePath = path.join(UPLOADS_DIR, attachment.storedFilename);
-    if (!fs.existsSync(filePath)) { res.status(404).json({ error: { code: 'NOT_FOUND', message: 'File not found on server' } }); return; }
+    const safeStored = path.basename(attachment.storedFilename);
+    const filePath = path.join(UPLOADS_DIR, safeStored);
+    if (!fs.existsSync(filePath) || !filePath.startsWith(UPLOADS_DIR)) { res.status(404).json({ error: { code: 'NOT_FOUND', message: 'File not found on server' } }); return; }
 
-    res.setHeader('Content-Disposition', `attachment; filename="${attachment.originalFilename}"`);
+    const safeFilename = attachment.originalFilename.replace(/["\r\n\\]/g, '_');
+    res.setHeader('Content-Disposition', `attachment; filename="${safeFilename}"`);
     res.setHeader('Content-Type', attachment.mimeType);
     res.sendFile(filePath);
   } catch (error) {
@@ -670,7 +692,7 @@ app.get('/api/attachments/:id/download', ...anyRole, async (req: Request, res: R
 // DELETE /api/attachments/:id
 app.delete('/api/attachments/:id', ...requesterOnly, async (req: Request, res: Response) => {
   const id = Number(req.params.id);
-  if (isNaN(id)) { res.status(400).json({ error: { code: 'INVALID_INPUT', message: 'Invalid attachment id' } }); return; }
+  if (isNaN(id) || !Number.isInteger(id) || id <= 0) { res.status(400).json({ error: { code: 'INVALID_INPUT', message: 'Invalid attachment id' } }); return; }
 
   const { reason } = req.body;
   if (!reason || typeof reason !== 'string' || reason.trim().length === 0) {
@@ -708,7 +730,7 @@ app.delete('/api/attachments/:id', ...requesterOnly, async (req: Request, res: R
 // POST /api/tickets/:id/comments — Requester (own) or IT Staff or Admin
 app.post('/api/tickets/:id/comments', ...anyRole, async (req: Request, res: Response) => {
   const ticketId = Number(req.params.id);
-  if (isNaN(ticketId)) { res.status(400).json({ error: { code: 'INVALID_INPUT', message: 'Invalid ticket id' } }); return; }
+  if (isNaN(ticketId) || !Number.isInteger(ticketId) || ticketId <= 0) { res.status(400).json({ error: { code: 'INVALID_INPUT', message: 'Invalid ticket id' } }); return; }
 
   const { content } = req.body;
   if (!content || typeof content !== 'string' || content.trim().length === 0) {
@@ -759,7 +781,7 @@ app.post('/api/tickets/:id/comments', ...anyRole, async (req: Request, res: Resp
 // GET /api/tickets/:id/comments — Requester (own) / IT Staff / Admin
 app.get('/api/tickets/:id/comments', ...anyRole, async (req: Request, res: Response) => {
   const ticketId = Number(req.params.id);
-  if (isNaN(ticketId)) { res.status(400).json({ error: { code: 'INVALID_INPUT', message: 'Invalid ticket id' } }); return; }
+  if (isNaN(ticketId) || !Number.isInteger(ticketId) || ticketId <= 0) { res.status(400).json({ error: { code: 'INVALID_INPUT', message: 'Invalid ticket id' } }); return; }
 
   try {
     const ticket = await prisma.ticket.findUnique({ where: { id: ticketId } });
@@ -907,7 +929,7 @@ app.get('/api/staff/tickets', ...staffOrAdmin, async (req: Request, res: Respons
 // GET /api/staff/tickets/:id — IT Staff Ticket Detail
 app.get('/api/staff/tickets/:id', ...staffOrAdmin, async (req: Request, res: Response) => {
   const ticketId = Number(req.params.id);
-  if (isNaN(ticketId)) { res.status(400).json({ error: { code: 'INVALID_INPUT', message: 'Invalid ticket id' } }); return; }
+  if (isNaN(ticketId) || !Number.isInteger(ticketId) || ticketId <= 0) { res.status(400).json({ error: { code: 'INVALID_INPUT', message: 'Invalid ticket id' } }); return; }
 
   try {
     const ticket = await prisma.ticket.findUnique({
@@ -941,11 +963,16 @@ app.get('/api/staff/tickets/:id', ...staffOrAdmin, async (req: Request, res: Res
 // PATCH /api/staff/tickets/:id/owner — claim/assign/reassign owner
 app.patch('/api/staff/tickets/:id/owner', ...staffOrAdmin, async (req: Request, res: Response) => {
   const ticketId = Number(req.params.id);
-  if (isNaN(ticketId)) { res.status(400).json({ error: { code: 'INVALID_INPUT', message: 'Invalid ticket id' } }); return; }
+  if (isNaN(ticketId) || !Number.isInteger(ticketId) || ticketId <= 0) { res.status(400).json({ error: { code: 'INVALID_INPUT', message: 'Invalid ticket id' } }); return; }
 
   try {
     const ticket = await prisma.ticket.findUnique({ where: { id: ticketId } });
     if (!ticket) { res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Ticket not found' } }); return; }
+
+    if (ticket.status === TicketStatus.CANCELLED || ticket.status === TicketStatus.CLOSED) {
+      res.status(400).json({ error: { code: 'INVALID_TICKET_STATE', message: `Cannot assign owner on a ${ticket.status} ticket` } });
+      return;
+    }
 
     let newOwnerId: number | null;
     const { ownerId } = req.body;
@@ -980,7 +1007,7 @@ app.patch('/api/staff/tickets/:id/owner', ...staffOrAdmin, async (req: Request, 
 // PATCH /api/staff/tickets/:id/priority — update IT Priority
 app.patch('/api/staff/tickets/:id/priority', ...staffOrAdmin, async (req: Request, res: Response) => {
   const ticketId = Number(req.params.id);
-  if (isNaN(ticketId)) { res.status(400).json({ error: { code: 'INVALID_INPUT', message: 'Invalid ticket id' } }); return; }
+  if (isNaN(ticketId) || !Number.isInteger(ticketId) || ticketId <= 0) { res.status(400).json({ error: { code: 'INVALID_INPUT', message: 'Invalid ticket id' } }); return; }
 
   const { itPriority } = req.body;
   if (!itPriority || !['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'].includes(itPriority)) {
@@ -990,6 +1017,11 @@ app.patch('/api/staff/tickets/:id/priority', ...staffOrAdmin, async (req: Reques
   try {
     const ticket = await prisma.ticket.findUnique({ where: { id: ticketId } });
     if (!ticket) { res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Ticket not found' } }); return; }
+
+    if (ticket.status === TicketStatus.CANCELLED || ticket.status === TicketStatus.CLOSED) {
+      res.status(400).json({ error: { code: 'INVALID_TICKET_STATE', message: `Cannot update priority on a ${ticket.status} ticket` } });
+      return;
+    }
 
     const updated = await prisma.ticket.update({
       where: { id: ticketId },
@@ -1006,7 +1038,7 @@ app.patch('/api/staff/tickets/:id/priority', ...staffOrAdmin, async (req: Reques
 // PATCH /api/staff/tickets/:id/status — update status (validates transition matrix, resolution gate, and concurrency)
 app.patch('/api/staff/tickets/:id/status', ...staffOrAdmin, async (req: Request, res: Response) => {
   const ticketId = Number(req.params.id);
-  if (isNaN(ticketId)) { res.status(400).json({ error: { code: 'INVALID_INPUT', message: 'Invalid ticket id' } }); return; }
+  if (isNaN(ticketId) || !Number.isInteger(ticketId) || ticketId <= 0) { res.status(400).json({ error: { code: 'INVALID_INPUT', message: 'Invalid ticket id' } }); return; }
 
   const { status } = req.body;
   if (!status || !Object.values(TicketStatus).includes(status as TicketStatus)) {
@@ -1115,7 +1147,7 @@ app.patch('/api/staff/tickets/:id/status', ...staffOrAdmin, async (req: Request,
 // POST /api/staff/tickets/:id/notes — create internal note (IT Staff or Administrator)
 app.post('/api/staff/tickets/:id/notes', ...staffOrAdmin, async (req: Request, res: Response) => {
   const ticketId = Number(req.params.id);
-  if (isNaN(ticketId)) { res.status(400).json({ error: { code: 'INVALID_INPUT', message: 'Invalid ticket id' } }); return; }
+  if (isNaN(ticketId) || !Number.isInteger(ticketId) || ticketId <= 0) { res.status(400).json({ error: { code: 'INVALID_INPUT', message: 'Invalid ticket id' } }); return; }
 
   const { content } = req.body;
   if (!content || typeof content !== 'string' || content.trim().length === 0) {
@@ -1153,7 +1185,7 @@ app.post('/api/staff/tickets/:id/notes', ...staffOrAdmin, async (req: Request, r
 // GET /api/staff/tickets/:id/notes — IT Staff or Administrator (AC-04)
 app.get('/api/staff/tickets/:id/notes', ...staffOrAdmin, async (req: Request, res: Response) => {
   const ticketId = Number(req.params.id);
-  if (isNaN(ticketId)) { res.status(400).json({ error: { code: 'INVALID_INPUT', message: 'Invalid ticket id' } }); return; }
+  if (isNaN(ticketId) || !Number.isInteger(ticketId) || ticketId <= 0) { res.status(400).json({ error: { code: 'INVALID_INPUT', message: 'Invalid ticket id' } }); return; }
 
   try {
     const ticket = await prisma.ticket.findUnique({ where: { id: ticketId } });
@@ -1557,7 +1589,7 @@ app.post('/api/admin/users', ...adminOnly, async (req: Request, res: Response) =
 // PATCH /api/admin/users/:id
 app.patch('/api/admin/users/:id', ...adminOnly, async (req: Request, res: Response) => {
   const userId = Number(req.params.id);
-  if (isNaN(userId)) { res.status(400).json({ error: { code: 'INVALID_INPUT', message: 'Invalid user id' } }); return; }
+  if (isNaN(userId) || !Number.isInteger(userId) || userId <= 0) { res.status(400).json({ error: { code: 'INVALID_INPUT', message: 'Invalid user id' } }); return; }
 
   try {
     const existingUser = await prisma.user.findUnique({ where: { id: userId } });
@@ -1614,7 +1646,7 @@ app.patch('/api/admin/users/:id', ...adminOnly, async (req: Request, res: Respon
 // POST /api/admin/users/:id/reset-password
 app.post('/api/admin/users/:id/reset-password', ...adminOnly, async (req: Request, res: Response) => {
   const userId = Number(req.params.id);
-  if (isNaN(userId)) { res.status(400).json({ error: { code: 'INVALID_INPUT', message: 'Invalid user id' } }); return; }
+  if (isNaN(userId) || !Number.isInteger(userId) || userId <= 0) { res.status(400).json({ error: { code: 'INVALID_INPUT', message: 'Invalid user id' } }); return; }
 
   try {
     const existingUser = await prisma.user.findUnique({ where: { id: userId } });

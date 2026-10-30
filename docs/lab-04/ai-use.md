@@ -48,10 +48,7 @@
 > 
 > **Reflection:** ในส่วนของ Issue 6 ได้พัฒนาหน้าจอ Role-Based Dashboards ทั้ง Requesterและ IT Staff / Administrator, Drill-down navigation ไปยังคิวงานที่กรองสถานะตรงกัน, รายการ Recent Tickets พร้อม Badge แสดงสถานะและระดับความสำคัญ, Quick Actions สำหรับงานด่วนและพัฒนา Automated Component Tests รวม 21 ข้อ โดยผ่านการทดสอบ 100%
 
----
-
-
-
-
-
-
+### Prompt 7 : Playwright E2E Test Suites & Responsive Screenshots (Issue #61)
+> **Prompt:** "ทำ Issue7 โดยทำตาม tasks ที่ได้วางแผนไว้และอัพเดทไฟล์เอกสาร reviwer ให้ด้วย ไม่ต้อง push และ commit"
+> 
+> **Reflection:** ให้ AI ช่วยเขียนเทส Playwright E2E ทดสอบทั้ง flow การเพิ่ม Action Taken, การติด Resolution Gate, และการเข้าดู Dashboard พร้อมตั้งค่าแคปรูปหน้าจอทั้งขนาดจอคอม แท็บเล็ต และมือถือ รวม 21 รูปเพื่อใช้เป็นหลักฐานส่งงาน

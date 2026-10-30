@@ -78,12 +78,12 @@
 ### 2.5. Playwright E2E Tests (`e2e/lab-04/`)
 | Test ID | Type | AC / Req | What It Tests | Expected Result | Automated Test File | Final Status |
 |---|---|---|---|---|---|:---:|
-| E2E-ACT-01 | E2E | AC-01 | Full flow: Login Staff -> Open Ticket -> Add Action Taken | Action appears in list with auto-performed by | `e2e/lab-04/actions-taken-flow.spec.ts` | Planned |
-| E2E-ACT-02 | E2E | AC-05 | Login Requester -> View own ticket Actions Taken | Requester sees actions in read-only mode | `e2e/lab-04/actions-taken-flow.spec.ts` | Planned |
-| E2E-RES-01 | E2E | AC-03 | Attempt to resolve ticket with no actions taken | Blocked by UI and backend; alert shown | `e2e/lab-04/ticket-resolution.spec.ts` | Planned |
-| E2E-RES-02 | E2E | AC-04 | Add action -> Transition status to RESOLVED | Status successfully updates to Resolved | `e2e/lab-04/ticket-resolution.spec.ts` | Planned |
-| E2E-DSH-01 | E2E | AC-07 | Staff Dashboard login, metric check, and drill-down | Navigates to filtered queue matching card | `e2e/lab-04/dashboards.spec.ts` | Planned |
-| E2E-DSH-02 | E2E | AC-06 | Requester Dashboard login, metrics, and quick action | Navigates to Create Ticket and My Tickets | `e2e/lab-04/dashboards.spec.ts` | Planned |
+| E2E-ACT-01 | E2E | AC-01 | Full flow: Login Staff -> Open Ticket -> Add Action Taken | Action appears in list with auto-performed by | `e2e/lab-04/actions-taken-flow.spec.ts` | Pass |
+| E2E-ACT-02 | E2E | AC-05 | Login Requester -> View own ticket Actions Taken | Requester sees actions in read-only mode | `e2e/lab-04/actions-taken-flow.spec.ts` | Pass |
+| E2E-RES-01 | E2E | AC-03 | Attempt to resolve ticket with no actions taken | Blocked by UI and backend; alert shown | `e2e/lab-04/ticket-resolution.spec.ts` | Pass |
+| E2E-RES-02 | E2E | AC-04 | Add action -> Transition status to RESOLVED | Status successfully updates to Resolved | `e2e/lab-04/ticket-resolution.spec.ts` | Pass |
+| E2E-DSH-01 | E2E | AC-07 | Staff Dashboard login, metric check, and drill-down | Navigates to filtered queue matching card | `e2e/lab-04/dashboards.spec.ts` | Pass |
+| E2E-DSH-02 | E2E | AC-06 | Requester Dashboard login, metrics, and quick action | Navigates to Create Ticket and My Tickets | `e2e/lab-04/dashboards.spec.ts` | Pass |
 
 ---
 
