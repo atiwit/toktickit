@@ -1,4 +1,4 @@
-﻿# AI Use Log — Lab 04
+# AI Use Log — Lab 04
 
 ## LLM Specification
 - **Model Used:** Gemini 3.8 Flash (High) / Antigravity Agentic Pair Programmer
@@ -40,6 +40,18 @@
 > **Prompt:** "ทำ Issue5 โดยทำตาม tasks ที่ได้วางแผนไว้และอัพเดทไฟล์เอกสาร reviwer ให้ด้วย ไม่ต้อง push และ commit"
 > 
 > **Reflection:** ในส่วนของ Issue 5 ได้พัฒนา REST API endpoints สำหรับ Role-Based Dashboards ที่ง Requester และ IT Staff และยัง จัดการ Empty State ให้คืนค่าตัวเลข 0 และ array ว่างและพัฒนาระบบ Automated API Tests รวม 18 ข้อ ครอบคลุมการคำนวณ, Authorization, Data Isolation, Session Invalidation และ Edge Cases โดยผ่านการทดสอบ 100%
+
+---
+
+### Prompt 6 : Role-Based Dashboard UIs & Navigation (Issue #60)
+> **Prompt:** "ทำ Issue6 โดยทำตาม tasks ที่ได้วางแผนไว้และอัพเดทไฟล์เอกสาร reviwer ให้ด้วย ไม่ต้อง push และ commit"
+> 
+> **Reflection:** ในส่วนของ Issue 6 ได้พัฒนาหน้าจอ Role-Based Dashboards ทั้ง Requesterและ IT Staff / Administrator, Drill-down navigation ไปยังคิวงานที่กรองสถานะตรงกัน, รายการ Recent Tickets พร้อม Badge แสดงสถานะและระดับความสำคัญ, Quick Actions สำหรับงานด่วนและพัฒนา Automated Component Tests รวม 21 ข้อ โดยผ่านการทดสอบ 100%
+
+---
+
+
+
 
 
 

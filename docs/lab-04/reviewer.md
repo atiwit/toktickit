@@ -74,8 +74,8 @@
 | #65 | feat(actions): Actions Taken model, migration, seed, and APIs | `feature/lab4-actions-foundation` | Merged | [PR #65](https://github.com/atiwit/toktickit/pull/65) |
 | #66 | feat(workflow): Ticket workflow, Resolution Gate, and Concurrency | `feature/lab4-ticket-workflow` | Merged | [PR #66](https://github.com/atiwit/toktickit/pull/66) |
 | #69 | feat(ui): Actions Taken on Ticket Detail UI | `feature/lab4-actions-ui` | Merged | [PR #69](https://github.com/atiwit/toktickit/pull/69) |
-| — | feat(dashboard): Role-based dashboard backend APIs | `feature/lab4-dashboards-api` | Ready for Review | — |
-| — | feat(dashboard-ui): Role-based dashboard screens and navigation | `feature/lab4-dashboards-ui` | Planned | — |
+| #70 | feat(dashboard): Role-based dashboard backend APIs | `feature/lab4-dashboards-api` | Merged | [PR #70](https://github.com/atiwit/toktickit/pull/70) |
+| — | feat(dashboard-ui): Role-based dashboard screens and navigation | `feature/lab4-dashboards-ui` | Ready for Review | — |
 | — | test(e2e): Playwright E2E suites and responsive screenshots | `feature/lab4-e2e-screenshots` | Planned | — |
 | — | chore(release): Final regression, hardening, and merge to main | `feature/lab4-release-integration` | Planned | — |
 
@@ -191,7 +191,49 @@
   1. แก้ไข `drillDownLinks.myAssigned` ใน `server/src/index.ts` จาก `/staff/tickets?owner=me` เป็น `/staff/tickets?owner=me&status=open-group` เพื่อให้สอดคล้องกับข้อกำหนด AC-08 และ FR-14 ที่ตัวเลขบนการ์ดและผลลัพธ์ในหน้ารายการตั๋วต้องตรงกันอย่างสมบูรณ์
   2. อัปเดต `docs/lab-04/api-spec.md` ในส่วนตัวอย่าง Response ของ `GET /api/dashboards/staff` ให้ระบุ `myAssigned` เป็น `/staff/tickets?owner=me&status=open-group`
   3. ปรับปรุงชุดทดสอบ `server/tests/lab-04/staff-dashboard.api.test.ts` (API-DSH-05) ให้ assert ลิงก์ `myAssigned` ที่มี `status=open-group` ผ่านครบ 100%
-- **Status:** Approved / Ready for Review (Branch: `feature/lab4-dashboards-api`)
+- **Status:** Approved & Merged into `lab4-staging` (Merged in PR #70)
+
+---
+
+### Issue #60: feat(dashboard-ui): Role-based dashboard screens and navigation (`feature/lab4-dashboards-ui`)
+- **Reviewer:** [@JeffMerry](https://github.com/JeffMerry) (Third Reviewer)
+- **Review Scope & Summary:**
+  1. **Requester Dashboard Screen (`client/src/pages/RequesterDashboard.tsx`):**
+     - Greeting Header banner แสดงข้อความต้อนรับตามชื่อจริงของผู้ใช้ ("Welcome, {name}!") พร้อมปุ่ม Refresh Dashboard (`aria-label="Refresh Dashboard"`)
+     - 4 Status Metric Cards: My Open Tickets (`metrics.myOpenTickets`), In Progress (`metrics.inProgress`), Resolved (`metrics.resolved`), Closed (`metrics.closed`) พร้อมปุ่ม Drill-down นำทางไปยัง `/tickets?status=...`
+     - Recent Tickets Widget แสดง 5 ตั๋วล่าสุด พร้อม Ticket Number (ลิงก์ไปยัง Ticket Detail), Summary, Status Badge, Requested Priority Badge, วันที่อัปเดต และ Empty State ที่เป็นมิตรเมื่อไม่มีตั๋ว
+     - Quick Actions Box: ปุ่ม `+ Create Ticket` นำทางไป `/create-ticket` และปุ่ม `View My Tickets` นำทางไป `/tickets`
+  2. **IT Staff & Administrator Dashboard Screen (`client/src/pages/StaffDashboard.tsx`):**
+     - Greeting Header banner แสดงข้อความต้อนรับ ("Welcome back, {name}!") และปุ่ม Refresh Data (`aria-label="Refresh Dashboard"`)
+     - 5 Operational Metric Cards: New (`metrics.new`), Open (`metrics.open`), In Progress (`metrics.inProgress`), Waiting for Requester (`metrics.waitingForRequester`), My Assigned (`metrics.myAssigned`) พร้อม Drill-down นำทางไปยังคิวงานที่กรองตรงกัน (`/staff/tickets?status=NEW`, `/staff/tickets?status=OPEN`, `/staff/tickets?status=IN_PROGRESS`, `/staff/tickets?status=WAITING_FOR_REQUESTER`, `/staff/tickets?owner=me&status=open-group`)
+     - Recent Tickets Widget แสดงตั๋ว 5 รายการล่าสุดในระบบ พร้อม Ticket Number (คลิกไป Staff Ticket Detail), Summary, Status Badge, IT Priority Badge (พร้อม fallback), ชิปผู้รับผิดชอบ (`ownerName`), วันที่อัปเดต และ Empty State เมื่อไม่มีตั๋ว
+     - Quick Actions Box: `+ Create Ticket`, `🔍 Search Tickets`, `📋 My Queue`
+  3. **Role-Appropriate Navigation & AppShell (`client/src/components/AppShell.tsx` & `client/src/App.tsx`):**
+     - เมนูนำทางจัดเตรียมตามบทบาทผู้ใช้อย่างถูกต้อง (FR-06, FR-17):
+       - Requester: Dashboard (`/requester/dashboard`), My Tickets (`/tickets`), Create Ticket (`/create-ticket`)
+       - IT Staff: Dashboard (`/staff/dashboard`), Ticket Queue (`/staff/tickets`)
+       - Administrator: Dashboard (`/staff/dashboard`), User Management (`/admin/users`)
+     - Active-page indicator แสดงผลชัดเจนด้วย NavLink และโลโก้ TokTickIT นำทางไปยังแดชบอร์ดตามสิทธิ์ของผู้ใช้
+     - `HomeRedirect` ที่ route `/` ช่วยนำทางผู้ใช้ที่ผ่านการ Authenticate แล้วไปยังแดชบอร์ดประจำบทบาทโดยอัตโนมัติ
+  4. **Automated Component Test Suites (`client/src/tests/lab-04/`):**
+     - `client/src/tests/lab-04/StaffDashboard.test.tsx` (11 tests): ครอบคลุม UI-DSH-01 (Render การ์ดและ Recent tickets พร้อม Empty state) และ UI-DSH-02 (Drill-down clicks, Quick actions navigation, Refresh action) ผ่านครบ 100%
+     - `client/src/tests/lab-04/RequesterDashboard.test.tsx` (10 tests): ครอบคลุม UI-DSH-03 (Render การ์ดและ Recent tickets พร้อม Empty state) และ UI-DSH-04 (Drill-down navigation, Quick actions, Refresh action) ผ่านครบ 100%
+     - ภาพรวมชุดทดสอบ Frontend Component ของ Lab 4 ผ่านทั้งหมด 37/37 tests
+- **Review Comment:**
+  > "ตรวจสอบหน้าจอ Dashboard ทั้งสองฝั่งแล้ว พบว่าการ์ดและรายการตั๋วแสดงผลสวยงามตาม Zen Green theme ลิงก์ Drill-down นำทางตรงกับ query parameter ของคิวงาน และ Accessible navigation ด้วย Tab/Enter ทำงานได้ราบรื่น ฝากเช็คเรื่อง Empty state เมื่อไม่มีตั๋วให้แสดงผลข้อความอย่างสุภาพและมีปุ่มทางลัดสร้างตั๋วด้วยครับ"
+- **Author Response & Resolution:**
+  1. เพิ่ม Empty State Container พร้อมไอคอน Inbox ข้อความอธิบายที่เข้าใจง่าย และปุ่มทางลัด "+ Create your first ticket" บน Requester Dashboard เพื่อให้ผู้ใช้งานใหม่เริ่มต้นส่งคำขอได้ทันที
+  2. จัดเตรียม Empty State ข้อความ "No recent tickets found" บน IT Staff Dashboard เพื่อรองรับกรณีที่ระบบยังไม่มีตั๋วหรือตั๋วทั้งหมดถูกเคลียร์เสร็จสิ้น
+  3. เพิ่ม Accessible attributes `aria-label`, `role="button"`, และ `onKeyDown` รองรับทั้งปุ่ม `Enter` และ `Space` บนการ์ด Metric และรายการตั๋วทุกชิ้น
+  4. ปรับปรุงชุดทดสอบ `StaffDashboard.test.tsx` และ `RequesterDashboard.test.tsx` ให้ assert ครอบคลุมกรณี Empty state ผ่านครบถ้วน 21/21 tests
+  5. **Security Hardening & Vulnerability Remediation:**
+     - **Synchronized Drill-down Filters:** เพิ่ม `<option value="open-group">` ใน `MyTickets.tsx` และ `StaffTicketQueue.tsx` และ `<option value="me">` ใน `StaffTicketQueue.tsx` เพื่อให้ Dropdown แสดงผลและ Filter ค่าตรงกัน 100% กับ Query params จาก Dashboard
+     - **Unified Administrator Role Authorization:** ปลดล็อกสิทธิ์ของ Administrator ให้เข้าถึงและจัดการตั๋วได้อย่างไร้รอยต่อใน `server/src/index.ts` ครอบคลุม: สร้างตั๋ว (`POST /api/tickets`), ดู/ดาวน์โหลดไฟล์แนบ (`GET /api/tickets/:id/attachments`, `GET /api/attachments/:id/download`), ตอบความคิดเห็น (`POST /api/tickets/:id/comments`), มอบหมายผู้รับผิดชอบ (`PATCH /api/staff/tickets/:id/owner`), ปรับความสำคัญ (`PATCH /api/staff/tickets/:id/priority`), และบันทึกโน้ตภายใน (`POST /api/staff/tickets/:id/notes`)
+     - **Terminal State Validation (BR-10, BR-16):** สกัดกั้นการบันทึกหรือแก้ไข `Actions Taken` บนตั๋วที่มีสถานะเป็น `CANCELLED` หรือ `CLOSED` ด้วย HTTP 400 (`INVALID_TICKET_STATE`)
+     - **Future Timestamp Guard (BR-04):** ตรวจสอบ `actionDateTime` ไม่ให้อยู่ในอนาคต หากพบจะตอบกลับด้วย HTTP 400 (`VALIDATION_ERROR`)
+     - **Automated Regression Coverage:** เพิ่มชุดทดสอบ API-ACT-25, 26, 27 ใน `server/tests/lab-04/actions-taken.api.test.ts` และการทดสอบ Dropdown ใน `client/src/tests/lab-03/StaffTicketQueue.test.tsx` ผ่าน 100%
+- **Status:** Approved / Ready for Review (Branch: `feature/lab4-dashboards-ui`)
+
 
 
 

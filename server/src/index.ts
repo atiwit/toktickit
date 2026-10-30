@@ -328,8 +328,8 @@ app.get('/api/related-systems', ...anyRole, async (_req: Request, res: Response)
 // REQUESTER TICKET ENDPOINTS
 // ===========================================================================
 
-// POST /api/tickets — Create Ticket (Requester only)
-app.post('/api/tickets', ...requesterOnly, async (req: Request, res: Response) => {
+// POST /api/tickets — Create Ticket (Requester, IT Staff, Admin)
+app.post('/api/tickets', ...anyRole, async (req: Request, res: Response) => {
   try {
     const { categoryId, relatedSystemId, requestedPriority, summary, description } = req.body;
     const requesterId = req.user!.userId;
@@ -614,7 +614,7 @@ app.post('/api/tickets/:id/attachments', ...requesterOnly, (req: Request, res: R
 });
 
 // GET /api/tickets/:id/attachments
-app.get('/api/tickets/:id/attachments', ...authOnly, authorize(Role.REQUESTER, Role.IT_STAFF), async (req: Request, res: Response) => {
+app.get('/api/tickets/:id/attachments', ...anyRole, async (req: Request, res: Response) => {
   const ticketId = Number(req.params.id);
   if (isNaN(ticketId)) { res.status(400).json({ error: { code: 'INVALID_INPUT', message: 'Invalid ticket id' } }); return; }
 
@@ -640,7 +640,7 @@ app.get('/api/tickets/:id/attachments', ...authOnly, authorize(Role.REQUESTER, R
 });
 
 // GET /api/attachments/:id/download
-app.get('/api/attachments/:id/download', ...authOnly, authorize(Role.REQUESTER, Role.IT_STAFF), async (req: Request, res: Response) => {
+app.get('/api/attachments/:id/download', ...anyRole, async (req: Request, res: Response) => {
   const id = Number(req.params.id);
   if (isNaN(id)) { res.status(400).json({ error: { code: 'INVALID_INPUT', message: 'Invalid attachment id' } }); return; }
 
@@ -705,8 +705,8 @@ app.delete('/api/attachments/:id', ...requesterOnly, async (req: Request, res: R
 // PUBLIC COMMENTS
 // ===========================================================================
 
-// POST /api/tickets/:id/comments — Requester (own) or IT Staff
-app.post('/api/tickets/:id/comments', ...authOnly, authorize(Role.REQUESTER, Role.IT_STAFF), async (req: Request, res: Response) => {
+// POST /api/tickets/:id/comments — Requester (own) or IT Staff or Admin
+app.post('/api/tickets/:id/comments', ...anyRole, async (req: Request, res: Response) => {
   const ticketId = Number(req.params.id);
   if (isNaN(ticketId)) { res.status(400).json({ error: { code: 'INVALID_INPUT', message: 'Invalid ticket id' } }); return; }
 
@@ -939,7 +939,7 @@ app.get('/api/staff/tickets/:id', ...staffOrAdmin, async (req: Request, res: Res
 });
 
 // PATCH /api/staff/tickets/:id/owner — claim/assign/reassign owner
-app.patch('/api/staff/tickets/:id/owner', ...staffOnly, async (req: Request, res: Response) => {
+app.patch('/api/staff/tickets/:id/owner', ...staffOrAdmin, async (req: Request, res: Response) => {
   const ticketId = Number(req.params.id);
   if (isNaN(ticketId)) { res.status(400).json({ error: { code: 'INVALID_INPUT', message: 'Invalid ticket id' } }); return; }
 
@@ -978,7 +978,7 @@ app.patch('/api/staff/tickets/:id/owner', ...staffOnly, async (req: Request, res
 });
 
 // PATCH /api/staff/tickets/:id/priority — update IT Priority
-app.patch('/api/staff/tickets/:id/priority', ...staffOnly, async (req: Request, res: Response) => {
+app.patch('/api/staff/tickets/:id/priority', ...staffOrAdmin, async (req: Request, res: Response) => {
   const ticketId = Number(req.params.id);
   if (isNaN(ticketId)) { res.status(400).json({ error: { code: 'INVALID_INPUT', message: 'Invalid ticket id' } }); return; }
 
@@ -1112,8 +1112,8 @@ app.patch('/api/staff/tickets/:id/status', ...staffOrAdmin, async (req: Request,
   }
 });
 
-// POST /api/staff/tickets/:id/notes — create internal note (IT Staff only)
-app.post('/api/staff/tickets/:id/notes', ...staffOnly, async (req: Request, res: Response) => {
+// POST /api/staff/tickets/:id/notes — create internal note (IT Staff or Administrator)
+app.post('/api/staff/tickets/:id/notes', ...staffOrAdmin, async (req: Request, res: Response) => {
   const ticketId = Number(req.params.id);
   if (isNaN(ticketId)) { res.status(400).json({ error: { code: 'INVALID_INPUT', message: 'Invalid ticket id' } }); return; }
 
@@ -1253,6 +1253,9 @@ function validateActionTakenPayload(
     if (isNaN(d.getTime())) {
       return { error: 'Invalid action date/time' };
     }
+    if (d.getTime() > Date.now() + 60000) {
+      return { error: 'Action date/time cannot be in the future' };
+    }
     parsedDateTime = d;
   }
 
@@ -1325,6 +1328,16 @@ app.post('/api/tickets/:id/actions-taken', ...staffOrAdmin, async (req: Request,
     const ticket = await prisma.ticket.findUnique({ where: { id: ticketId } });
     if (!ticket) {
       res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Ticket not found' } });
+      return;
+    }
+
+    if (ticket.status === TicketStatus.CANCELLED || ticket.status === TicketStatus.CLOSED) {
+      res.status(400).json({
+        error: {
+          code: 'INVALID_TICKET_STATE',
+          message: `Cannot record Action Taken on a ${ticket.status} ticket`,
+        },
+      });
       return;
     }
 
@@ -1406,6 +1419,22 @@ app.patch('/api/tickets/:id/actions-taken/:actionId', ...staffOrAdmin, async (re
   }
 
   try {
+    const ticket = await prisma.ticket.findUnique({ where: { id: ticketId } });
+    if (!ticket) {
+      res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Ticket not found' } });
+      return;
+    }
+
+    if (ticket.status === TicketStatus.CANCELLED || ticket.status === TicketStatus.CLOSED) {
+      res.status(400).json({
+        error: {
+          code: 'INVALID_TICKET_STATE',
+          message: `Cannot modify Action Taken on a ${ticket.status} ticket`,
+        },
+      });
+      return;
+    }
+
     const existing = await prisma.actionTaken.findFirst({
       where: { id: actionId, ticketId },
     });

@@ -610,3 +610,66 @@ describe('UI-12 — Advanced API Error handling & Recovery', () => {
   });
 });
 
+describe('StaffTicketQueue — Dashboard Drill-down Filter Options', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('contains "open-group" in status dropdown and "me" in owner dropdown', async () => {
+    mockFetchSuccess();
+    renderQueue();
+
+    await waitFor(() => {
+      expect(screen.getByText('Ticket Queue')).toBeInTheDocument();
+    });
+
+    const statusSelect = document.getElementById('queue-status-filter') as HTMLSelectElement;
+    expect(statusSelect).toBeInTheDocument();
+    const openGroupOption = Array.from(statusSelect.options).find(opt => opt.value === 'open-group');
+    expect(openGroupOption).toBeDefined();
+    expect(openGroupOption?.text).toContain('Open Group');
+
+    const ownerSelect = document.getElementById('queue-owner-filter') as HTMLSelectElement;
+    expect(ownerSelect).toBeInTheDocument();
+    const meOption = Array.from(ownerSelect.options).find(opt => opt.value === 'me');
+    expect(meOption).toBeDefined();
+    expect(meOption?.text).toContain('Assigned to Me');
+  });
+
+  it('triggers fetch with status=open-group when open-group status is selected', async () => {
+    mockFetchSuccess();
+    renderQueue();
+
+    await waitFor(() => {
+      expect(screen.getByText('Ticket Queue')).toBeInTheDocument();
+    });
+
+    const statusSelect = document.getElementById('queue-status-filter') as HTMLSelectElement;
+    fireEvent.change(statusSelect, { target: { value: 'open-group' } });
+
+    await waitFor(() => {
+      const calls = (global.fetch as ReturnType<typeof vi.fn>).mock.calls;
+      const lastCallUrl = calls[calls.length - 1][0] as string;
+      expect(lastCallUrl).toContain('status=open-group');
+    });
+  });
+
+  it('triggers fetch with ownerId=me when Assigned to Me owner is selected', async () => {
+    mockFetchSuccess();
+    renderQueue();
+
+    await waitFor(() => {
+      expect(screen.getByText('Ticket Queue')).toBeInTheDocument();
+    });
+
+    const ownerSelect = document.getElementById('queue-owner-filter') as HTMLSelectElement;
+    fireEvent.change(ownerSelect, { target: { value: 'me' } });
+
+    await waitFor(() => {
+      const calls = (global.fetch as ReturnType<typeof vi.fn>).mock.calls;
+      const lastCallUrl = calls[calls.length - 1][0] as string;
+      expect(lastCallUrl).toContain('ownerId=me');
+    });
+  });
+});
+

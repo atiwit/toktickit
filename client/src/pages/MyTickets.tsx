@@ -305,6 +305,7 @@ const MyTickets: React.FC = () => {
             onChange={e => { setCurStatus(e.target.value); setPage(1); }}
             style={{ width: '100%', padding: '8px 10px', borderRadius: '8px', border: '1px solid #E5E7EB', fontSize: '0.85rem', background: '#fff', color: '#374151' }}>
             <option value="">All Statuses</option>
+            <option value="open-group">All Active / Open (Open Group)</option>
             <option value="NEW">New</option>
             <option value="OPEN">Open</option>
             <option value="IN_PROGRESS">In Progress</option>
