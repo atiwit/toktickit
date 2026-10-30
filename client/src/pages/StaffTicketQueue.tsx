@@ -232,6 +232,7 @@ const StaffTicketQueue: React.FC = () => {
             style={{ width: '100%', padding: '8px 10px', borderRadius: '8px', border: '1px solid #E5E7EB', fontSize: '0.85rem' }}
           >
             <option value="">All Statuses</option>
+            <option value="open-group">All Active / Open (Open Group)</option>
             <option value="NEW">New</option>
             <option value="OPEN">Open</option>
             <option value="IN_PROGRESS">In Progress</option>
@@ -270,6 +271,7 @@ const StaffTicketQueue: React.FC = () => {
             style={{ width: '100%', padding: '8px 10px', borderRadius: '8px', border: '1px solid #E5E7EB', fontSize: '0.85rem' }}
           >
             <option value="">All</option>
+            <option value="me">Assigned to Me</option>
             <option value="unassigned">Unassigned</option>
           </select>
         </div>

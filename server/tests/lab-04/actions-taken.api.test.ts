@@ -606,5 +606,87 @@ describe('Lab 4 Actions Taken API Tests (server/tests/lab-04/actions-taken.api.t
       expect(res2.status).toBe(400);
       expect(res2.body.error.code).toBe('VALIDATION_ERROR');
     });
+
+    it('API-ACT-25: POST returns 400 when actionDateTime is in the future', async () => {
+      const futureDate = new Date(Date.now() + 86400000 * 30).toISOString();
+      const res = await request(app)
+        .post('/api/tickets/1/actions-taken')
+        .set('Cookie', staffCookie())
+        .send({
+          actionDescription: 'Future action attempt',
+          result: 'Will not happen',
+          actionDateTime: futureDate,
+        });
+
+      expect(res.status).toBe(400);
+      expect(res.body.error.code).toBe('VALIDATION_ERROR');
+      expect(res.body.error.message).toMatch(/future/i);
+    });
+
+    it('API-ACT-26: POST returns 400 INVALID_TICKET_STATE when ticket is CANCELLED or CLOSED', async () => {
+      mockPrismaInstance.ticket.findUnique.mockResolvedValueOnce({
+        ...sampleTicket,
+        status: 'CANCELLED',
+      });
+
+      const res1 = await request(app)
+        .post('/api/tickets/1/actions-taken')
+        .set('Cookie', staffCookie())
+        .send({
+          actionDescription: 'Attempt on cancelled ticket',
+          result: 'Fail',
+        });
+
+      expect(res1.status).toBe(400);
+      expect(res1.body.error.code).toBe('INVALID_TICKET_STATE');
+
+      mockPrismaInstance.ticket.findUnique.mockResolvedValueOnce({
+        ...sampleTicket,
+        status: 'CLOSED',
+      });
+
+      const res2 = await request(app)
+        .post('/api/tickets/1/actions-taken')
+        .set('Cookie', staffCookie())
+        .send({
+          actionDescription: 'Attempt on closed ticket',
+          result: 'Fail',
+        });
+
+      expect(res2.status).toBe(400);
+      expect(res2.body.error.code).toBe('INVALID_TICKET_STATE');
+    });
+
+    it('API-ACT-27: PATCH returns 400 INVALID_TICKET_STATE when ticket is CANCELLED or CLOSED', async () => {
+      mockPrismaInstance.ticket.findUnique.mockResolvedValueOnce({
+        ...sampleTicket,
+        status: 'CANCELLED',
+      });
+
+      const res1 = await request(app)
+        .patch('/api/tickets/1/actions-taken/101')
+        .set('Cookie', staffCookie())
+        .send({
+          actionDescription: 'Patch on cancelled ticket',
+        });
+
+      expect(res1.status).toBe(400);
+      expect(res1.body.error.code).toBe('INVALID_TICKET_STATE');
+
+      mockPrismaInstance.ticket.findUnique.mockResolvedValueOnce({
+        ...sampleTicket,
+        status: 'CLOSED',
+      });
+
+      const res2 = await request(app)
+        .patch('/api/tickets/1/actions-taken/101')
+        .set('Cookie', staffCookie())
+        .send({
+          actionDescription: 'Patch on closed ticket',
+        });
+
+      expect(res2.status).toBe(400);
+      expect(res2.body.error.code).toBe('INVALID_TICKET_STATE');
+    });
   });
 });

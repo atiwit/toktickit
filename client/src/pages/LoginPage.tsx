@@ -28,9 +28,9 @@ const LoginPage: React.FC = () => {
   const [cpLoading, setCpLoading]   = useState(false);
 
   const roleHome = (role: UserRole): string => {
-    if (role === 'IT_STAFF')      return '/staff/tickets';
-    if (role === 'ADMINISTRATOR') return '/admin/users';
-    return '/';  // REQUESTER
+    if (role === 'IT_STAFF')      return '/staff/dashboard';
+    if (role === 'ADMINISTRATOR') return '/staff/dashboard';
+    return '/requester/dashboard';  // REQUESTER
   };
 
   // --- Login Logic ---
