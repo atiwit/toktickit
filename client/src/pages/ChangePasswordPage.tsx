@@ -20,9 +20,9 @@ const ChangePasswordPage: React.FC = () => {
   const [loading, setLoading]   = useState(false);
 
   const roleHome = (role: UserRole): string => {
-    if (role === 'IT_STAFF')      return '/staff/tickets';
-    if (role === 'ADMINISTRATOR') return '/admin/users';
-    return '/';
+    if (role === 'IT_STAFF')      return '/staff/dashboard';
+    if (role === 'ADMINISTRATOR') return '/staff/dashboard';
+    return '/requester/dashboard';
   };
 
   const validate = (): boolean => {

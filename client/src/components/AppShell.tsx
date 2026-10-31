@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
 import { useAuth, roleLabel } from '../context/AuthContext';
-import { Clock, FileText, PlusCircle, ListChecks, Users, LogOut, Menu, X, ChevronDown } from 'lucide-react';
+import { Clock, FileText, PlusCircle, ListChecks, Users, LogOut, Menu, X, ChevronDown, LayoutDashboard } from 'lucide-react';
 
 const AppShell: React.FC = () => {
   const { user, loading, logout } = useAuth();
@@ -15,27 +15,30 @@ const AppShell: React.FC = () => {
     navigate('/login', { replace: true });
   };
 
-  // Role-specific nav items (FR-06, ui-spec §2.3)
+  // Role-specific nav items (FR-06, FR-17, ui-spec §2.3)
   const navItems = React.useMemo(() => {
     if (!user) return [];
     if (user.role === 'REQUESTER') return [
-      { to: '/', label: 'My Tickets', icon: <FileText size={18} />, end: true },
+      { to: '/requester/dashboard', label: 'Dashboard', icon: <LayoutDashboard size={18} />, end: true },
+      { to: '/tickets', label: 'My Tickets', icon: <FileText size={18} />, end: false },
       { to: '/create-ticket', label: 'Create Ticket', icon: <PlusCircle size={18} />, end: false },
     ];
     if (user.role === 'IT_STAFF') return [
+      { to: '/staff/dashboard', label: 'Dashboard', icon: <LayoutDashboard size={18} />, end: true },
       { to: '/staff/tickets', label: 'Ticket Queue', icon: <ListChecks size={18} />, end: false },
     ];
     if (user.role === 'ADMINISTRATOR') return [
+      { to: '/staff/dashboard', label: 'Dashboard', icon: <LayoutDashboard size={18} />, end: true },
       { to: '/admin/users', label: 'User Management', icon: <Users size={18} />, end: false },
     ];
     return [];
   }, [user]);
 
-  // Role-appropriate home path
+  // Role-appropriate home path (FR-17)
   const homePath = React.useMemo(() => {
-    if (user?.role === 'IT_STAFF') return '/staff/tickets';
-    if (user?.role === 'ADMINISTRATOR') return '/admin/users';
-    return '/';
+    if (user?.role === 'IT_STAFF') return '/staff/dashboard';
+    if (user?.role === 'ADMINISTRATOR') return '/staff/dashboard';
+    return '/requester/dashboard';
   }, [user?.role]);
 
   const roleBadgeColor = (role: string) => {

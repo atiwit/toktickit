@@ -32,6 +32,25 @@
 ### Prompt 4 : Actions Taken on Ticket Detail UI & Resolution Gate Interception (Issue #58)
 > **Prompt:** "ทำ Issue4 โดยทำตาม tasks ที่ได้วางแผนไว้และอัพเดทไฟล์เอกสาร reviwer ให้ด้วย"
 > 
-> **Reflection:** ในส่วนของ Issue 4 ได้พัฒนา UI คอมโพเนนต์ `ActionsTakenSection` ตามแบบแผน Zen Green Design System รองรับการแสดงผลทั้งบนหน้าจอ IT Staff (Interactive mode) และหน้าจอ Requester (Read-only mode และเขียน Automated Component Tests ครอบคลุม ผ่าน 100%
+> **Reflection:** ในส่วนของ Issue 4 ได้พัฒนา UI คอมโพเนนต์ `ActionsTakenSection` ตามแบบแผน Zen Green Design System รองรับการแสดงผลทั้งบนหน้าจอ IT Staff (Interactive mode) และหน้าจอ Requester (Read-only mode) และเขียน Automated Component Tests ครอบคลุม ผ่าน 100%
 
+---
+
+### Prompt 5 : Role-Based Dashboard APIs (Issue #59)
+> **Prompt:** "ทำ Issue5 โดยทำตาม tasks ที่ได้วางแผนไว้และอัพเดทไฟล์เอกสาร reviwer ให้ด้วย ไม่ต้อง push และ commit"
+> 
+> **Reflection:** ในส่วนของ Issue 5 ได้พัฒนา REST API endpoints สำหรับ Role-Based Dashboards ที่ง Requester และ IT Staff และยัง จัดการ Empty State ให้คืนค่าตัวเลข 0 และ array ว่างและพัฒนาระบบ Automated API Tests รวม 18 ข้อ ครอบคลุมการคำนวณ, Authorization, Data Isolation, Session Invalidation และ Edge Cases โดยผ่านการทดสอบ 100%
+
+---
+
+### Prompt 6 : Role-Based Dashboard UIs & Navigation (Issue #60)
+> **Prompt:** "ทำ Issue6 โดยทำตาม tasks ที่ได้วางแผนไว้และอัพเดทไฟล์เอกสาร reviwer ให้ด้วย ไม่ต้อง push และ commit"
+> 
+> **Reflection:** ในส่วนของ Issue 6 ได้พัฒนาหน้าจอ Role-Based Dashboards ทั้ง Requesterและ IT Staff / Administrator, Drill-down navigation ไปยังคิวงานที่กรองสถานะตรงกัน, รายการ Recent Tickets พร้อม Badge แสดงสถานะและระดับความสำคัญ, Quick Actions สำหรับงานด่วนและพัฒนา Automated Component Tests รวม 21 ข้อ โดยผ่านการทดสอบ 100%
+
+### Prompt 7 : Playwright E2E Test Suites & Responsive Screenshots (Issue #61)
+> **Prompt:** "ทำ Issue7 โดยทำตาม tasks ที่ได้วางแผนไว้และอัพเดทไฟล์เอกสาร reviwer ให้ด้วย ไม่ต้อง push และ commit"
+> 
+> **Reflection:** ให้ AI ช่วยเขียนเทส Playwright E2E ทดสอบทั้ง flow การเพิ่ม Action Taken, การติด Resolution Gate, และการเข้าดู Dashboard พร้อมตั้งค่าแคปรูปหน้าจอทั้งขนาดจอคอม แท็บเล็ต และมือถือ รวม 21 รูปเพื่อใช้เป็นหลักฐานส่งงาน
+> **Reflection:** ให้ AI ช่วยไล่เทสระบบทั้งหมดตั้งแต่ Lab 1 ถึง Lab 4 เพื่อดูว่ามีอะไรพังไหม พร้อมกับช่วยตรวจหาช่องโหว่ความปลอดภัยแล้วแก้ให้เรียบร้อย เช่น ปัญหาเลขตั๋วชนกันเวลาสร้างพร้อมกัน การแอบแก้ตั๋วที่ปิดไปแล้ว และแก้บั๊กเวลากดปุ่มในตารางแล้วมันเด้งเปิดตั๋วซ้ำซ้อน เสร็จแล้วก็อัปเดตเอกสารสรุปงานเตรียมส่ง
 
