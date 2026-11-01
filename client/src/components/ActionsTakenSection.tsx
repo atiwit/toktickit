@@ -21,6 +21,9 @@ export interface ActionTaken {
   } | null;
 }
 
+export const ActionTaken = {};
+
+
 export interface ActionsTakenSectionProps {
   ticketId: number;
   actions: ActionTaken[];

@@ -4,7 +4,7 @@
   "main": "index.js",
   "scripts": {
     "dev": "tsx watch src/index.ts",
-    "test": "vitest --fileParallelism=false",
+    "test": "vitest run --fileParallelism=false",
     "seed": "tsx prisma/seed.ts"
   },
   "keywords": [],

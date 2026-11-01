@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 
 interface StaffTicket {
   id: number;
@@ -94,6 +94,7 @@ const SkeletonRow: React.FC = () => (
 
 const StaffTicketQueue: React.FC = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
 
   const [tickets, setTickets]       = useState<StaffTicket[]>([]);
   const [pagination, setPagination] = useState<Pagination | null>(null);
@@ -101,13 +102,22 @@ const StaffTicketQueue: React.FC = () => {
   const [error, setError]           = useState<string | null>(null);
 
   // Filters / sort / page
-  const [search, setSearch]         = useState('');
-  const [status, setStatus]         = useState('');
-  const [itPriority, setItPriority] = useState('');
-  const [ownerId, setOwnerId]       = useState('');
+  const initialStatus = searchParams.get('status') || '';
+  const initialOwner = searchParams.get('owner') === 'me' ? 'me' : (searchParams.get('ownerId') || '');
+  const [search, setSearch]         = useState(searchParams.get('search') || '');
+  const [status, setStatus]         = useState(initialStatus);
+  const [itPriority, setItPriority] = useState(searchParams.get('itPriority') || '');
+  const [ownerId, setOwnerId]       = useState(initialOwner);
   const [sort, setSort]             = useState('createdAt_desc');
   const [page, setPage]             = useState(1);
   const [pageSize, setPageSize]     = useState(10);
+
+  useEffect(() => {
+    const s = searchParams.get('status');
+    const o = searchParams.get('owner') === 'me' ? 'me' : searchParams.get('ownerId');
+    if (s !== null) setStatus(s);
+    if (o !== null) setOwnerId(o);
+  }, [searchParams]);
 
   const fetchQueue = useCallback(async () => {
     setLoading(true);
@@ -222,6 +232,7 @@ const StaffTicketQueue: React.FC = () => {
             style={{ width: '100%', padding: '8px 10px', borderRadius: '8px', border: '1px solid #E5E7EB', fontSize: '0.85rem' }}
           >
             <option value="">All Statuses</option>
+            <option value="open-group">All Active / Open (Open Group)</option>
             <option value="NEW">New</option>
             <option value="OPEN">Open</option>
             <option value="IN_PROGRESS">In Progress</option>
@@ -260,6 +271,7 @@ const StaffTicketQueue: React.FC = () => {
             style={{ width: '100%', padding: '8px 10px', borderRadius: '8px', border: '1px solid #E5E7EB', fontSize: '0.85rem' }}
           >
             <option value="">All</option>
+            <option value="me">Assigned to Me</option>
             <option value="unassigned">Unassigned</option>
           </select>
         </div>
@@ -332,6 +344,12 @@ const StaffTicketQueue: React.FC = () => {
                 {tickets.map((t, idx) => (
                   <tr
                     key={t.id}
+                    onClick={(e) => {
+                      if ((e.target as HTMLElement).closest('button, a, input, select, textarea, [data-interactive]')) {
+                        return;
+                      }
+                      navigate(`/staff/tickets/${t.id}`);
+                    }}
                     style={{ background: idx % 2 === 0 ? '#fff' : '#FAFAFA', cursor: 'pointer' }}
                     onMouseEnter={e => (e.currentTarget.style.background = '#F0FDF4')}
                     onMouseLeave={e => (e.currentTarget.style.background = idx % 2 === 0 ? '#fff' : '#FAFAFA')}
@@ -354,7 +372,10 @@ const StaffTicketQueue: React.FC = () => {
                     <td style={td}>
                       <button
                         id={`btn-open-ticket-${t.id}`}
-                        onClick={() => navigate(`/staff/tickets/${t.id}`)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          navigate(`/staff/tickets/${t.id}`);
+                        }}
                         style={{
                           padding: '5px 14px', borderRadius: '6px',
                           border: '1px solid #006B3C', background: '#F0FDF4',
@@ -375,7 +396,12 @@ const StaffTicketQueue: React.FC = () => {
             {tickets.map(t => (
               <div
                 key={t.id}
-                onClick={() => navigate(`/staff/tickets/${t.id}`)}
+                onClick={(e) => {
+                  if ((e.target as HTMLElement).closest('button, a, input, select, textarea, [data-interactive]')) {
+                    return;
+                  }
+                  navigate(`/staff/tickets/${t.id}`);
+                }}
                 style={{ ...card, padding: '1rem', marginBottom: '0.75rem', cursor: 'pointer' }}
               >
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px', flexWrap: 'wrap', gap: '6px' }}>

@@ -28,6 +28,21 @@ vi.mock('../../src/generated/prisma/client', () => {
         create: vi.fn().mockResolvedValue(mockCreatedTicket),
       },
     })),
+    Role: {
+      REQUESTER: 'REQUESTER',
+      IT_STAFF: 'IT_STAFF',
+      ADMINISTRATOR: 'ADMINISTRATOR',
+    },
+    TicketStatus: {
+      NEW: 'NEW',
+      OPEN: 'OPEN',
+      IN_PROGRESS: 'IN_PROGRESS',
+      WAITING_FOR_REQUESTER: 'WAITING_FOR_REQUESTER',
+      RESOLVED: 'RESOLVED',
+      CLOSED: 'CLOSED',
+      REOPENED: 'REOPENED',
+      CANCELLED: 'CANCELLED',
+    },
   };
 });
 

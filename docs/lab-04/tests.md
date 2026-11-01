@@ -27,6 +27,9 @@
 | API-ACT-09 | API | AC-01 | Get Actions Taken as IT Staff | 200 OK; returns full list with user metadata | `server/tests/lab-04/actions-taken.api.test.ts` | Pass |
 | API-ACT-10 | API | AC-01 | Update existing Action Taken as IT Staff | 200 OK; updated fields persisted | `server/tests/lab-04/actions-taken.api.test.ts` | Pass |
 | API-ACT-11 | API | AC-05 | Update existing Action Taken as Requester | 403 Forbidden; write blocked | `server/tests/lab-04/actions-taken.api.test.ts` | Pass |
+| API-ACT-25 | API | BR-04 | Prevent future date/time in Action Taken | 400 Bad Request; validation failure on future timestamp | `server/tests/lab-04/actions-taken.api.test.ts` | Pass |
+| API-ACT-26 | API | BR-10 | Block recording Action Taken on CANCELLED or CLOSED ticket | 400 Bad Request; INVALID_TICKET_STATE | `server/tests/lab-04/actions-taken.api.test.ts` | Pass |
+| API-ACT-27 | API | BR-10 | Block modifying Action Taken on CANCELLED or CLOSED ticket | 400 Bad Request; INVALID_TICKET_STATE | `server/tests/lab-04/actions-taken.api.test.ts` | Pass |
 
 ---
 
@@ -46,24 +49,24 @@
 ### 2.3. Dashboard APIs Tests (`server/tests/lab-04/requester-dashboard.api.test.ts` & `staff-dashboard.api.test.ts`)
 | Test ID | Type | AC / Req | What It Tests | Expected Result | Automated Test File | Final Status |
 |---|---|---|---|---|---|:---:|
-| API-DSH-01 | API | AC-06 | GET Requester Dashboard as authenticated Requester | 200 OK; returns metrics isolated to caller | `server/tests/lab-04/requester-dashboard.api.test.ts` | Planned |
-| API-DSH-02 | API | AC-06 | Verify Requester Dashboard metrics match database counts | Accurate counts for Open, In Progress, Resolved, Closed | `server/tests/lab-04/requester-dashboard.api.test.ts` | Planned |
-| API-DSH-03 | API | AC-06 | Requester Dashboard recent tickets list length ≤ 5 | 200 OK; sorted by updatedAt descending | `server/tests/lab-04/requester-dashboard.api.test.ts` | Planned |
-| API-DSH-04 | API | AC-06 | IT Staff requesting Requester Dashboard | 403 Forbidden; role mismatch | `server/tests/lab-04/requester-dashboard.api.test.ts` | Planned |
-| API-DSH-05 | API | AC-07 | GET Staff Dashboard as IT Staff | 200 OK; operational metrics returned | `server/tests/lab-04/staff-dashboard.api.test.ts` | Planned |
-| API-DSH-06 | API | AC-07 | Verify Staff Dashboard counts match DB queries | Accurate counts for New, Open, In Progress, Waiting, My Assigned | `server/tests/lab-04/staff-dashboard.api.test.ts` | Planned |
-| API-DSH-07 | API | AC-07 | GET Staff Dashboard as Administrator | 200 OK; admin has full staff dashboard access | `server/tests/lab-04/staff-dashboard.api.test.ts` | Planned |
-| API-DSH-08 | API | AC-07 | Requester requesting Staff Dashboard | 403 Forbidden; unauthorized role blocked | `server/tests/lab-04/staff-dashboard.api.test.ts` | Planned |
+| API-DSH-01 | API | AC-06 | GET Requester Dashboard as authenticated Requester | 200 OK; returns metrics isolated to caller | `server/tests/lab-04/requester-dashboard.api.test.ts` | Pass |
+| API-DSH-02 | API | AC-06 | Verify Requester Dashboard metrics match database counts | Accurate counts for Open, In Progress, Resolved, Closed | `server/tests/lab-04/requester-dashboard.api.test.ts` | Pass |
+| API-DSH-03 | API | AC-06 | Requester Dashboard recent tickets list length ≤ 5 | 200 OK; sorted by updatedAt descending | `server/tests/lab-04/requester-dashboard.api.test.ts` | Pass |
+| API-DSH-04 | API | AC-06 | IT Staff requesting Requester Dashboard | 403 Forbidden; role mismatch | `server/tests/lab-04/requester-dashboard.api.test.ts` | Pass |
+| API-DSH-05 | API | AC-07 | GET Staff Dashboard as IT Staff | 200 OK; operational metrics returned | `server/tests/lab-04/staff-dashboard.api.test.ts` | Pass |
+| API-DSH-06 | API | AC-07 | Verify Staff Dashboard counts match DB queries | Accurate counts for New, Open, In Progress, Waiting, My Assigned | `server/tests/lab-04/staff-dashboard.api.test.ts` | Pass |
+| API-DSH-07 | API | AC-07 | GET Staff Dashboard as Administrator | 200 OK; admin has full staff dashboard access | `server/tests/lab-04/staff-dashboard.api.test.ts` | Pass |
+| API-DSH-08 | API | AC-07 | Requester requesting Staff Dashboard | 403 Forbidden; unauthorized role blocked | `server/tests/lab-04/staff-dashboard.api.test.ts` | Pass |
 
 ---
 
 ### 2.4. Frontend Component Tests (`client/src/tests/lab-04/`)
 | Test ID | Type | AC / Req | What It Tests | Expected Result | Automated Test File | Final Status |
 |---|---|---|---|---|---|:---:|
-| UI-DSH-01 | Component | AC-07 | Render IT Staff Dashboard with metrics cards | Cards render correct values and labels | `client/src/tests/lab-04/StaffDashboard.test.tsx` | Planned |
-| UI-DSH-02 | Component | AC-08 | IT Staff Dashboard metric cards click drill-down | Navigates to queue with appropriate filter query | `client/src/tests/lab-04/StaffDashboard.test.tsx` | Planned |
-| UI-DSH-03 | Component | AC-06 | Render Requester Dashboard with cards & recent tickets | Displays Requester's tickets and status badges | `client/src/tests/lab-04/RequesterDashboard.test.tsx` | Planned |
-| UI-DSH-04 | Component | AC-08 | Requester Dashboard drill-down navigation | Navigates to My Tickets filtered | `client/src/tests/lab-04/RequesterDashboard.test.tsx` | Planned |
+| UI-DSH-01 | Component | AC-07 | Render IT Staff Dashboard with metrics cards | Cards render correct values and labels | `client/src/tests/lab-04/StaffDashboard.test.tsx` | Pass |
+| UI-DSH-02 | Component | AC-08 | IT Staff Dashboard metric cards click drill-down | Navigates to queue with appropriate filter query | `client/src/tests/lab-04/StaffDashboard.test.tsx` | Pass |
+| UI-DSH-03 | Component | AC-06 | Render Requester Dashboard with cards & recent tickets | Displays Requester's tickets and status badges | `client/src/tests/lab-04/RequesterDashboard.test.tsx` | Pass |
+| UI-DSH-04 | Component | AC-08 | Requester Dashboard drill-down navigation | Navigates to My Tickets filtered | `client/src/tests/lab-04/RequesterDashboard.test.tsx` | Pass |
 | UI-ACT-01 | Component | AC-01 | Render Actions Taken list on Staff Ticket Detail | Displays date, description, result, actor badge | `client/src/tests/lab-04/ActionsTaken.test.tsx` | Pass |
 | UI-ACT-02 | Component | AC-02 | Follow-up checkbox toggles Follow-up Note input | Dynamic input visibility and required validation | `client/src/tests/lab-04/ActionsTaken.test.tsx` | Pass |
 | UI-ACT-03 | Component | AC-05 | Actions Taken rendered on Requester Ticket Detail | Read-only mode, no Add/Edit buttons rendered | `client/src/tests/lab-04/ActionsTaken.test.tsx` | Pass |
@@ -75,20 +78,20 @@
 ### 2.5. Playwright E2E Tests (`e2e/lab-04/`)
 | Test ID | Type | AC / Req | What It Tests | Expected Result | Automated Test File | Final Status |
 |---|---|---|---|---|---|:---:|
-| E2E-ACT-01 | E2E | AC-01 | Full flow: Login Staff -> Open Ticket -> Add Action Taken | Action appears in list with auto-performed by | `e2e/lab-04/actions-taken-flow.spec.ts` | Planned |
-| E2E-ACT-02 | E2E | AC-05 | Login Requester -> View own ticket Actions Taken | Requester sees actions in read-only mode | `e2e/lab-04/actions-taken-flow.spec.ts` | Planned |
-| E2E-RES-01 | E2E | AC-03 | Attempt to resolve ticket with no actions taken | Blocked by UI and backend; alert shown | `e2e/lab-04/ticket-resolution.spec.ts` | Planned |
-| E2E-RES-02 | E2E | AC-04 | Add action -> Transition status to RESOLVED | Status successfully updates to Resolved | `e2e/lab-04/ticket-resolution.spec.ts` | Planned |
-| E2E-DSH-01 | E2E | AC-07 | Staff Dashboard login, metric check, and drill-down | Navigates to filtered queue matching card | `e2e/lab-04/dashboards.spec.ts` | Planned |
-| E2E-DSH-02 | E2E | AC-06 | Requester Dashboard login, metrics, and quick action | Navigates to Create Ticket and My Tickets | `e2e/lab-04/dashboards.spec.ts` | Planned |
+| E2E-ACT-01 | E2E | AC-01 | Full flow: Login Staff -> Open Ticket -> Add Action Taken | Action appears in list with auto-performed by | `e2e/lab-04/actions-taken-flow.spec.ts` | Pass |
+| E2E-ACT-02 | E2E | AC-05 | Login Requester -> View own ticket Actions Taken | Requester sees actions in read-only mode | `e2e/lab-04/actions-taken-flow.spec.ts` | Pass |
+| E2E-RES-01 | E2E | AC-03 | Attempt to resolve ticket with no actions taken | Blocked by UI and backend; alert shown | `e2e/lab-04/ticket-resolution.spec.ts` | Pass |
+| E2E-RES-02 | E2E | AC-04 | Add action -> Transition status to RESOLVED | Status successfully updates to Resolved | `e2e/lab-04/ticket-resolution.spec.ts` | Pass |
+| E2E-DSH-01 | E2E | AC-07 | Staff Dashboard login, metric check, and drill-down | Navigates to filtered queue matching card | `e2e/lab-04/dashboards.spec.ts` | Pass |
+| E2E-DSH-02 | E2E | AC-06 | Requester Dashboard login, metrics, and quick action | Navigates to Create Ticket and My Tickets | `e2e/lab-04/dashboards.spec.ts` | Pass |
 
 ---
 
 ### 2.6. Full System Regression Tests (Labs 1–3)
 | Test ID | Module | What It Tests | Expected Result | Automated Test File | Final Status |
 |---|---|---|---|---|:---:|
-| REG-01 | Authentication | Login, logout, mustChangePassword flow, session cookie | Passes 100% | `server/tests/lab-03/auth.api.test.ts` | Planned |
-| REG-02 | Authorization | Role route protection, 401 unauth, 403 forbidden | Passes 100% | `server/tests/lab-03/authorization.api.test.ts` | Planned |
-| REG-03 | Comments & Notes | Public comments append-only, internal notes staff-only | Passes 100% | `server/tests/lab-03/comments-notes.api.test.ts` | Planned |
-| REG-04 | Staff Queue & Ops | Search, filter, sort, pagination, claim ticket, priority | Passes 100% | `server/tests/lab-03/staff-queue.api.test.ts` | Planned |
-| REG-05 | Admin User Mgmt | User list, create, edit, activate/deactivate, last-admin block | Passes 100% | `server/tests/lab-03/users-admin.api.test.ts` | Planned |
+| REG-01 | Authentication | Login, logout, mustChangePassword flow, session cookie | Passes 100% | `server/tests/lab-03/auth.api.test.ts` | Pass |
+| REG-02 | Authorization | Role route protection, 401 unauth, 403 forbidden | Passes 100% | `server/tests/lab-03/authorization.api.test.ts` | Pass |
+| REG-03 | Comments & Notes | Public comments append-only, internal notes staff-only | Passes 100% | `server/tests/lab-03/comments-notes.api.test.ts` | Pass |
+| REG-04 | Staff Queue & Ops | Search, filter, sort, pagination, claim ticket, priority | Passes 100% | `server/tests/lab-03/staff-queue.api.test.ts` | Pass |
+| REG-05 | Admin User Mgmt | User list, create, edit, activate/deactivate, last-admin block | Passes 100% | `server/tests/lab-03/users-admin.api.test.ts` | Pass |

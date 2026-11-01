@@ -2,7 +2,7 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import AttachmentSection from './AttachmentSection';
-import ActionsTakenSection, { ActionTaken } from '../components/ActionsTakenSection';
+import ActionsTakenSection, { type ActionTaken } from '../components/ActionsTakenSection';
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
