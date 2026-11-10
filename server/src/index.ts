@@ -68,7 +68,9 @@ declare global {
 // Middleware: authenticate — validates JWT cookie and verifies user is active in DB (session invalidation)
 // ---------------------------------------------------------------------------
 async function authenticate(req: Request, res: Response, next: NextFunction): Promise<void> {
-  const token = req.cookies?.token;
+  const authHeader = req.headers.authorization;
+  const bearerToken = authHeader?.startsWith('Bearer ') ? authHeader.substring(7) : undefined;
+  const token = req.cookies?.token || bearerToken;
   if (!token) {
     const legacyRequesterId = req.headers['x-requester-id'] || (req.body && req.body.requesterId);
     if (process.env.NODE_ENV === 'test' && (legacyRequesterId || (req.path === '/api/tickets' && req.method === 'POST'))) {
@@ -166,10 +168,19 @@ function validatePassword(pw: string): string | null {
 }
 
 // ---------------------------------------------------------------------------
-// Health Check
+// Health Check & Readiness Check
 // ---------------------------------------------------------------------------
 app.get('/api/health', (_req: Request, res: Response) => {
   res.status(200).json({ status: 'ok', service: 'Tok TickIT API' });
+});
+
+app.get('/api/ready', async (_req: Request, res: Response) => {
+  try {
+    await prisma.$queryRaw`SELECT 1`;
+    res.status(200).json({ status: 'ready', db: 'connected' });
+  } catch {
+    res.status(503).json({ status: 'not_ready' });
+  }
 });
 
 // ===========================================================================
@@ -224,6 +235,7 @@ app.post('/api/auth/login', async (req: Request, res: Response) => {
     setTokenCookie(res, token);
 
     res.status(200).json({
+      token,
       user: {
         id: user.id,
         name: user.name,

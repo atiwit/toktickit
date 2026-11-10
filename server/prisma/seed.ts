@@ -10,6 +10,8 @@ const prisma = new PrismaClient();
 // ---------------------------------------------------------------------------
 const BCRYPT_ROUNDS = 10;
 const DEFAULT_PASSWORD = 'P@ssw0rd1'; // dev only — documented
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || DEFAULT_PASSWORD;
+const DEMO_PASSWORD = process.env.DEMO_USER_PASSWORD || DEFAULT_PASSWORD;
 
 // ---------------------------------------------------------------------------
 // Reference Data
@@ -60,9 +62,12 @@ const USERS = [
 async function main() {
   console.log('Start seeding (Lab 3)...\n');
 
-  // --- Hash default password once ---
-  const passwordHash = await bcrypt.hash(DEFAULT_PASSWORD, BCRYPT_ROUNDS);
-  console.log(`Password hash generated for "${DEFAULT_PASSWORD}"`);
+  // --- Hash passwords ---
+  const adminHash = await bcrypt.hash(ADMIN_PASSWORD, BCRYPT_ROUNDS);
+  const demoHash = await bcrypt.hash(DEMO_PASSWORD, BCRYPT_ROUNDS);
+  if (process.env.NODE_ENV !== 'production') {
+    console.log(`Password hashes generated for dev/demo accounts`);
+  }
 
   // --- Categories ---
   console.log('\nSeeding categories...');
@@ -103,6 +108,7 @@ async function main() {
   console.log('\nSeeding users...');
   const upsertedUsers: { id: number; name: string; email: string; role: Role; isActive: boolean }[] = [];
   for (const u of USERS) {
+    const passwordHash = u.role === Role.ADMINISTRATOR ? adminHash : demoHash;
     const user = await prisma.user.upsert({
       where: { email: u.email },
       update: {
@@ -296,11 +302,13 @@ async function main() {
   }
 
   console.log('\n✅ Seeding complete!');
-  console.log('\n📋 Dev credentials (all use password: P@ssw0rd1)');
-  console.log('   admin@toktickit.dev         — Administrator');
-  console.log('   it.alpha@toktickit.dev      — IT Staff');
-  console.log('   alice.johnson@example.com   — Requester');
-  console.log('   newhire@toktickit.dev       — IT Staff (mustChangePassword=true)');
+  if (process.env.NODE_ENV !== 'production') {
+    console.log('\n📋 Dev credentials (all use password: ' + DEFAULT_PASSWORD + ')');
+    console.log('   admin@toktickit.dev         — Administrator');
+    console.log('   it.alpha@toktickit.dev      — IT Staff');
+    console.log('   alice.johnson@example.com   — Requester');
+    console.log('   newhire@toktickit.dev       — IT Staff (mustChangePassword=true)');
+  }
 }
 
 main()

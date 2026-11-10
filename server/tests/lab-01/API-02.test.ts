@@ -4,8 +4,10 @@ import app from '../../src/index';
 
 // Mock PrismaClient to avoid requiring a running database during tests
 import { vi } from 'vitest';
-vi.mock('../../src/generated/prisma/client', () => {
+vi.mock('../../src/generated/prisma/client', async (importOriginal) => {
+  const actual = await importOriginal<any>();
   return {
+    ...actual,
     PrismaClient: vi.fn().mockImplementation(() => {
       return {
         category: {
